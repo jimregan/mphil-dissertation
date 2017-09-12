@@ -1,0 +1,15 @@
+*.log
+*.idx
+*.ind
+*.aux
+*.ilg
+*.backup
+dissertation.bbl
+dissertation.blg
+dissertation.glg
+dissertation.glo
+dissertation.gls
+dissertation.ist
+dissertation.out
+dissertation.pdf
+dissertation.toc
