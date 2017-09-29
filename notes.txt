@@ -1,0 +1,78 @@
+* Conversion of FST to Apertium
+** Nouns
+*** Adding missing tags (i.e., missing '+Sg' on proper nouns in the genitive, missing mutation tags, etc.)
+---- More than half-way done (> 4000 generated paradigms checked to > 1000 (< 1500))
+*** Consistency: ensuring the same (correct!) number of forms are created
+---- Should be scriptable, must follow previous item
+*** Classification of proper nouns: English proper nouns are done, others todo
+---- This is a small task; some overlap with first item
+*** Vocative/DefArt forms of nouns
+---- This is a small task, shell one-liner
+
+** Adjectives
+*** to convert
+*** nouns do not have a '+Slender' tag to agree with
+*** adjectives that do not vary for gender/number still need placeholders (small task)
+
+** Verbs
+*** to convert
+*** (Somewhat) open question: where to mark phrasal verbs
+---- i.e., to signal that there is a specific infinitival form to be generated in place of inserting 'a'
+---- e.g.: ``lámh a bheith in uachtar ag''
+---- Related: verb phrases that need to generate a separate noun phrase:
+---- e.g.: níl cead agat tobac a caitheamh (with 'caith tobac' as MWE),
+---- but: caitheann an fear sin tobac
+---- as previously mentioned, this would be best handled by extending the engine to handle multiple translation parts, but for now can be handled with a macro (similar to the current use of a variable to translate ``next'' as ``chéad'' + ``eile''; however, determiners (and determiner-like adjectives) are finite, phrasal verbs are not).
+
+* Bilingual dictionary
+** Add strong/weak to nouns
+** Also mark for slender? 
+** Rank translations with multiple equivalents
+--- Can be done with monolingual frequency lists, but may be better to use a phrase table; however, a clean phrase table is the best option
+--- Maybe three passes: monolingual, dirty phrase table, clean phrase table, and compare each -- is this worth measuring?
+
+* Rules
+** Noun rules: some additional cases of mutation not handled (aon, uile, etc.) 
+--- most in this category can happen at chunk time
+** Exemplar rules for verbs
+** Irish -> English: (potential) segmentation ambiguity
+[Chonaic] [sé] [an bord briste]
+[Bhí] [an bord] [briste] (for "the table was broken")
+but:
+[Bhí] [an bord briste] [sa chistin]
+or
+[Bhí] [an bord] [[briste] [sa chistin]]
+(I'm not sure if this really is ambiguous, but it seems to me that it is)
+** dots-dentals
+*** with nouns, this is across chunk boundaries, may require specific module (small task, but may be achievable without the addition, which would be the much better option)
+
+* SMT chapter
+--With the new focus on data quality (replacing NMT), this is best split into two pieces:
+** dirty data training
+** clean data training
+-- these would then be compared to measure the impact that data quality has on the data
+
+* Data quality
+** Gaois.ie
+--- Only ~1/10th of common errors in gaois.ie corpus handled
+** KDE4 -- full of errors:
+--- corpus-clean-notes.txt has examples of errors; also - is this a good way to discuss this? These are very preliminary notes
+--- The po2tmx tool (part of translate toolkit) can be used to recreate an equivalent corpus; this should remove the errors, while also providing an updated corpus (KDE is now on version 5)
+** EUBookshop -- disaster
+--- also in corpus-clean-notes.txt
+** Tatoeba
+--- Clean, but out of date (OPUS version contains ~500 pairs; re-extracted version contains ~1400) -- done, but worth mentioning
+--- One single error: a sentence in Galician mislabeled as Irish (glg vs. gle)
+** DGT -- conversion from TMX, no noticeable errors
+** GNOME -- seems ok, but updating may yield more data
+** Ubuntu -- as GNOME
+** Citizensinformation.ie corpus (mine)
+--- Initial set of alignments with tagaligner not promising:
+---- poor segmentation: maligna (https://github.com/loomchild/maligna) uses SRX segmentation (SRX for English and the other languages in the corpus are available for LanguageTool; I added Irish SRX in late 2015), and uses IBM Model 1 word alignment to estimate a vocabulary from the text, to re-estimate its sentence alignments.
+---- noise from page boilerplate (script to remove boilerplate written) 
+
+Possibly the best approach with the EUBookshop corpus would be to treat it as a comparable corpus, and use methods for finding parallel sentences in comparable corpora to filter the errors (these methods typically work like SMT evaluation methods, at the risk of penalising sentences with new vocabulary)
+A second possibility would be to re-create the data (much more documents have been created since the OPUS corpus was published), and retain only newly created documents, and/or check for typical OCR confusions (e.g., l< in the middle of a word that ought to contain 'k'); a final possibility would be to re-OCR the older documents
+
+I may have a means of keeping the background on Neural MT without having an experiment based on it; I had already mentioned BPE, and that the sub-word approach to Neural MT ought to also work with SMT. I've also come across the anymalign word alignment tool (https://anymalign.limsi.fr/) which can be used to approximate my idea on integrating linguistic information in an end-to-end fashion; where with a Neural MT system, I would have tried to couple the property that the seq2seq model used in Neural MT merely models sequences, and has been used for part-of-speech tagging, along with Google's observation that training multiple languages causes the creation of what is, in a (very loose) sense, an interlingua, to condition the translation on linguistic information rather than other languages. A simple heuristic can be used with anymalign to align the text with PoS-tagged text of both source and translation, and extract only those alignments which have the same part of speech; it can also be used to incorporate the other languages from citizensinformation.ie (French, Romanian, Polish) to have extra conditioning. This generated lexicon can be appended to the corpus of the SMT system to add to the confidence of known good words in a way that ought to be roughly equivalent to the end-to-end Neural MT approach.
+ 

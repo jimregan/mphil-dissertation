@@ -1,0 +1,71 @@
+\chapter{Citizen's Information Corpus}
+\label{app:citinfcorpus}
+
+Citizen's Information, available at \href{http://www.citizensinformation.ie}{http://www.citizensinformation.ie}, 
+is an Irish government website run by the Citizens Information Board, a national agency responsible for
+providing information about government services. 
+
+As a source of parallel text, it has a number of desirable qualities: first and foremost, a large amount of its
+content has been translated from English to Irish, while a smaller number of documents are additionally 
+available in French, Polish, and Romanian.
+
+Where translations are available, they are highlighted in a box on the right hand side of the page; although
+this in itself makes finding pairs of parallel texts quite simple, the address design of the site makes it
+even more simple: each document is prefixed first by its two-character ISO 639-1 code, followed by categories
+and subcategories the document fits into, followed finally by the page title. Translated documents retain the
+English address, changing only the ISO 639-1 language prefix.
+
+Where a translation has been removed -- as happens when the English original has been updated, but the translation
+lags, and would otherwise provide inaccurate information -- the page redirects to the English version. This in
+itself would normally make it necessary to run language identification software over the non-English documents, to
+verify that the document is in the language that the ISO 639-1 prefix of the address would suggest, but the site
+generator makes this unnecessary: the \texttt{<html>} tag, the root level element of all HTML documents, is
+generated with a \texttt{lang} attribute that contains the correct ISO 639-1 language code, thus making language 
+identification unnecessary.
+
+Boilerplate removal is an important step in producing any kind of corpus from web-based texts. One reason why,
+in general, is that the inclusion of frequently repeated text items, such as those appearing in site 
+navigation menus, can lead to misleading statistics. For parallel text in particular, the inclusion of a
+language-choosing element can itself lead to misleading translations: the spot offering ``B\'earla'' in the
+Irish version of a website would quite naturally offer ``Irish'' in the same location of the English version
+of the page, leading to an incorrect pairing of ``B\'earla'' and ``Irish''.
+
+The high quality page generation of the Citizen's Information site again provides assistance. On each generated
+page, the content of the page is separated clearly from the boilerplate with cues in the HTML markup:
+
+\begin{verbatim}
+<!-- start of Document -->
+<a name="startcontent"></a>
+\end{verbatim}
+
+One of the most attractive qualities of the Citizen's Information website is that it is one of the
+first government-run websites to fully embrace the recommendations on the Re-use of Public Sector Information,
+with all content of the site available under the recommended Open Content licence, Creative Commons CC-BY 4.0.
+The terms of this licence allow content that is covered by it to be re-used, modified, and/or redistributed,
+as long as an appropriate acknowledgement of the source of the information is provided. This permissive
+licence means that any linguistic resources resulting from the website can be used at will, without relying
+on research exemptions, and can therefore be used by commercial entities as well as by other researchers.
+
+Finally, that the content of the Citizens Information site is available as HTML is an advantage. Revenue.ie,
+the Irish Tax and Customs website, is also available under an open licence, with a large amount of parallel
+text in English and Irish, but the majority of its documents are available as PDF. HTML, as a format designed
+for on-screen display, is much easier to align at a document level: for example, paragraphs are marked
+semantically, with the decision of how they ought to be rendered left to the web browser -- the site designer
+may set a number of properties using style sheets, etc., to control how they are presented, but these
+properties can be ignored, which is quite often desirable when the reader is using technological solutions
+for accessibility, such as screen readers for the blind.
+
+PDF, on the other hand, is designed for print layout. Although PDF can additionally contain the plain text
+that is visible within the document, it is not always the case that it is present; even when present, the
+PDF creation software may have used its own internal encoding system for rendering characters, such as vowels
+with fadas; also, if the document was not ``digital native'', but created through scanning, the text may have
+been added using Optical Character Recognition (\GLS{OCR}), which may introduce errors of its own: a common
+example is ``arid'' in place of ``and'', due to the visual similarity of \texttt{ri} and \texttt{n}.
+
+\section{Conversion}
+
+Because of the relatively small amount of processing required, due to the nature of the Citizen's 
+Information website, much of the usual processing involved in preparing a bilingual corpus from the web
+could be bypassed: documents were paired based on their address, language content checked based on that
+reported in the \texttt{<html>} tag, and a simple script (included in the supplemental data repository, and
+is also reproduced in Appendix~\ref{app:bpremoval}.

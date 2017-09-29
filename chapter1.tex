@@ -1,0 +1,341 @@
+%\def\longs{{\fontencoding{TS1}\selectfont s}}
+\chapter{Introduction}
+
+% The TODO for this chapter
+This introduction will provide a high level overview of Machine Translation (\GLS{MT}) (section~\ref{sect:intromt}), and of the 
+particular challenges posed by Irish (section~\ref{sect:introirish}).
+It will also describe briefly the approach to evaluation 
+which will be employed (section~\ref{sect:introeval}), and introduce the structure of the remainder of the dissertation.
+
+
+
+\section{Machine Translation}
+\label{sect:intromt}
+
+Machine Translation (MT), or automatic translation, is an automated process that recodes one human language 
+into another. Several approaches exist to tackling the problem, which can be classified in a number of 
+ways: of those considered in this dissertation, the primary distinction is between knowledge-based (linguistic) approaches, 
+using dictionaries and grammatical rules to perform the translation; and data-driven approaches, which 
+learn to translate using a corpus of existing translations.
+
+Machine Translation is used for two primary purposes: \textit{assimilation}, to get the gist of text in 
+a foreign language, and \textit{dissemination}, as an input to publication, typically post-edited by 
+translators. Free online services, such as Google Translate, are usually intended for assimilation, 
+while the translation services in use at multilingual organisations such as the European Union are 
+typically intended for dissemination. Consequently, systems can be designed with certain 
+trade-offs in mind: for example, a system intended primarily for assimilation may trade accuracy for 
+broader coverage, and vice versa.
+
+The amount of data and effort required to build an MT system for either task depends on a number of 
+factors, first among which is how closely-related the languages are. More closely-related languages 
+tend to share similar structures, and tend to have more cognate words (which, even when unrecognised 
+by the translator, pass through as ``free rides''). \cite{trosterud2012evaluating} compare a gisting 
+system from North S\'ami to Norwegian Bokm{\aa}l (non-Indo-European to Indo-European) with their earlier 
+work on Norwegian Nynorsk and Bokm{\aa}l~\citep{unhammer2009rfr}, which achieves near post-edition quality 
+using less than a third of the amount of transfer code. 
+
+Machine Translation, ultimately, is a tool for facilitating communication, and the needs of communication 
+tend to dictate the purpose: when translating from a major language to a minor language, assimilation 
+is the primary need of the majority of (potential) users, whereas when translating from a major language 
+to a minor language, the primary need is dissemination, to gain more text in the minor language.
+
+\subsection{Technology and challenges}
+
+Knowledge-based, or Rule-Based Machine Translation (\GLS{RBMT}), systems can be classified into three main categories: \textit{direct translation}, where no 
+transformation of the source text is performed; \textit{transfer-based}, where the input is transformed 
+into a language-dependent intermediate representation -- typically, \textit{lemma}: the citation 
+form of the word; \textit{morphological analysis}: details such as case, number, person, etc.; and 
+possibly \textit{semantic analysis}: the subject of a verb, etc. -- and \textit{interlingua}, where the 
+input is transformed into a language independent representation. 
+
+Rule-based systems tend to be costly and time-consuming to build, as they require lexicographers and 
+linguists to create dictionaries and rules. Transfer-based and interlingua approaches, as they operate 
+on abstract representations, generalise better -- if a word is in the dictionary, it can be handled in 
+all forms -- but they tend to handle exceptions, such as idioms, poorly: specific rules must be written, 
+and multiple rules may conflict with each other. Additionally, the complexity of an interlingua tends,
+in reality, to increase with the addition of each additional language, as each new language adds its
+unique terms and structures, the existing lexical and syntactic rule base needs to expand to 
+accommodate them.
+
+The prerequisite for building data-driven systems, including Statistical Machine Translation (\GLS{SMT}),
+Neural Machine Translation (\GLS{NMT}), and Example-Based Machine Translation (\GLS{EBMT}), is the 
+existence of human-translated bilingual (or multilingual) corpora.
+
+A common source of professionally translated multilingual corpora are international organisations such 
+as the United Nations or the European Union, which generate a substantial amount of freely available, 
+high-quality multilingual documents (in 24 languages for the EU\footnote{Art. 1 of the Regulation No. 1 
+of 15 April 1958 determining the languages to be used by the European Economic Community.} and in 6 
+languages for the UN\footnote{Rule 51 of the Rules of Procedure of the General Assembly of the United 
+Nations; rule 41 of the Provisional Rules of Procedure of the United Nations Security Council.}).
+
+Compared to rule-based MT systems, data-driven MT systems are cheaper -- at least, for widely-spoken 
+languages -- and more flexible: a data-driven system is not designed specifically for one language 
+pair, but can accommodate any language pair for which a corpus is available. Also, because data-driven 
+MT systems are based on human-translated texts, the output of such systems is, or, at least, can be, 
+more natural (or ``fluent''), and it naturally adapts well to exceptions: if the corpus contains the 
+phrase, it is effectively not an exception.
+
+\textit{Zipf's law} states that in a given corpus, the frequency of a word is inversely proportional 
+to its frequency rank: the most frequent word will occur (approximately) twice as often as the second, 
+three times as often as the third, and so on. Conversely, the majority of words (40-60\%) are 
+\textit{hapax legomena} (words which only occur once). As data-driven MT is corpus-based, it therefore 
+suffers from the problem of \textit{data sparsity} due to the high proportion of hapax legomena: longer 
+phrase matches are absent from the translation model; contextual information is absent from the language 
+model, affecting the quality (``fluency'') of the output.
+
+Data sparsity is the biggest problem in data-driven MT. Although there have been attempts to solve it 
+by using linguistic information, dating back to CANDIDE (the first SMT system), the most common approach 
+is to simply add more data\footnote{On the other hand, it has been claimed that translation quality can be 
+increased by simply discarding infrequent phrases: \citet{Johnson07improvingtranslation}.}. A large 
+amount of websites are available in multiple languages, so crawling the web for parallel text is a 
+common method of collecting corpora~\citep{zora80038}, particularly for the providers of free online 
+MT, such as Google and Microsoft, who also operate search engines and therefore already have access to 
+such data. The use of such data, however, has its own problems, as such documents are often not just 
+translated, but \textit{localised}: different units of measurement, currency, and even country 
+names~\citep{quince08}, because of their collocation, become ``translations''. 
+
+Crowdsourcing, where online communities are solicited for content, is also in increasing use. Amazon's 
+Mechanical Turk, an online market place for work, provides an easy way to pay people small amounts of 
+money for small units of work, which has been used in MT~\citep{zaidan2011}. Google has made use of 
+crowdsourcing since the earliest days of Google Translate, by providing users with a means of improving 
+translation suggestions~\citep{chin07suggest}, by providing a translation memory 
+system~\citep{galvez09toolkit}, and more directly, with Translate Community~\citep{kelman14community}. 
+Crowdsourcing has been recently used for Irish-English MT, via user contributed translations of 
+tweets~\citep{dowling2017crowd}.
+
+Finally, the quality of MT output depends on the quality of the input. Even the most banal imperfections, 
+such as misspellings or grammar mistakes, even if they are barely noticeable to a human translator, can 
+compromise the most elaborate MT systems~\citep{porsiel12sec}.
+
+\section{Irish}
+\label{sect:introirish}
+
+Irish is an Indo-European language, from the Q-Celtic branch of Celtic languages, closely related to 
+Scots Gaelic and Manx, and more distantly related to Welsh, Breton, and Cornish. Irish exists in a 
+somewhat paradoxical state in that, while it is ``definitely endangered''~\citep{moseley2010atlas}, it
+is also the first national language of the Republic of Ireland, and is an official language of the
+European Union; although Irish is a compulsory subject for all students\footnote{A limited set of
+exemptions are outlined in Circular letter M10/94: 
+\href{https://www.education.ie/en/Circulars-and-Forms/Active-Circulars/ppc10_94.pdf}{https://www.education.ie/en/Circulars-and-Forms/Active-Circulars/ppc10\_94.pdf}.},
+30.1\% of 10-19 year olds interviewed for the 2016 census answered ``no'' to the question ``can you
+speak Irish?''\footnote{\href{http://www.cso.ie/en/media/csoie/releasespublications/documents/population/2017/7._The_Irish_language.pdf}{http://www.cso.ie/en/media/csoie/releasespublications/documents/population/2017/ 7.\_The\_Irish\_language.pdf}};
+and despite the existence of designated Irish speaking, or \textit{Gaeltacht}, areas, the same census
+reports that only 32\% of the Irish speakers living in Gaeltacht areas speak Irish on a daily basis.
+
+There are three primary dialects of Irish, corresponding to three of the four provinces of Ireland:
+Connacht, Munster, and Ulster (there is evidence of a Leinster dialect having existed); there is
+a quite low level of mutual intelligibility between the dialects, though this is reducing thanks
+to the availability of television and radio in Irish. For the most part, the differences are most
+evident in the spoken language, although differences in syntax do exist. A written standard for
+Irish has existed since the 1950s, though as it is intended solely to provide a written standard
+for official publications, and ``not an official standard for speech nor a denial of the linguistic wealth of the various dialects''
+(``Ní caighdeán oifigiúil le haghaidh na cainte atá i gceist ná ní séanadh ar an saibhreas teanga sna canúintí éagsúla é.''~\citep[xviii]{caighdean2017}).
+
+Unlike most other European languages outside of the Celtic family, Irish is a VSO language,
+with adjectives and other modifiers typically following the noun or noun phrase.
+Irish is an inflected language, with suffix or internal inflection, as well as a set of initial
+mutations which are typical of Celtic languages. Nouns have gender -- masculine or feminine --
+and inflect for case and number. Nouns can have three cases: a common nominative/accusative,
+genitive, and vocative. There are also calcified remnants of a dative case, which is still
+in use in some areas.
+
+Verbs inflect for tense and mood, and may, particularly in the Munster dialect, also inflect for person
+and number. Verbs are quite
+regular, although a small number of the more common verbs are extremely irregular. Irish has
+two equivalents of the verb ``to be'': the existential verb ``b\'i'' and the copula ``is'', 
+which share the same Indo-European origins as the English ``be'' and ``is'', or Polish 
+``by\'c'' and ``jest''. Irish has no single equivalents of ``yes'' or ``no'', using instead
+the repeated verb (or copula) or its negation to express an affirmative or negative response.
+
+\subsection{Problems facing Irish}
+
+\subsubsection{Lack of linguistic research}
+\label{sssect:lingresearch}
+
+``In the area of syntax, basic linguistic research on the linguistic phenomena of Irish syntax is 
+required''~\citep[p. 73]{LWP-Irish}. One such example is reflexive verbs and verb phrases in Irish.
+While some study exists~\citep[e.g.,][]{nolan2004rrg,nolan2000reflexive}, they focus mainly on the use of the
+reflexive pronoun, ``f\'ein'', while there are other constructs which show at least basic reflexivity, such
+as verbs which express their object with an adjunct: ``chuir m\'e mo ch\'ota orm'' (\textit{I put my coat on 
+(myself)}, ``Brostaigh ort!'' (\textit{Hurry (yourself) up}).
+
+Similarly, the infinitive of a verb is
+expressed with a verbal noun preceded by the infinitival particle ``a''; however, in constructs where
+the object of a verb or copula phrase is an infinitival phrase, the infinitival particle is dropped
+where there is no object of the infinitival verb: e.g., ``is maith liom leabhar a l\'eamh'' 
+(\textit{I like to read a book}) retains the infinitival particle, but 
+``is maith liom l\'eamh'' (\textit{I like to read}) does not, but grammars of Irish do not typically
+speak of this as being the same process; for example, \citet[p. 128]{grammar1980cb} explicitly mention
+in point 7 that the negative infinitive is expressed with the preposition ``gan'' and the verbal noun,
+while indirectly mentions in point 9 that the equivalent when there is an object uses the particle ``a'',
+but without linking the two.
+
+\subsubsection{Technological support}
+
+\citet[s. 5.1]{krauwer2003basic} defines ``the  Basic  Language  Resource  Kit  
+(abbreviated  BLARK)  as  the  minimal  set  of  language  
+resources that is necessary to do any precompetitive 
+research and education at all'', and includes in it linguistic resources such as dictionaries, 
+grammars, and corpora, as well as tools such as text to speech, morphological analysers, taggers,
+parsers, and speech recognisers.
+
+Although Irish is considered to have only ``fragmentary support'' in the area of speech processing,
+and ``weak/no support'' in the areas of machine translation, text analysis, and speech and text
+resources~\citep[pp. 77--78]{LWP-Irish}, there is a perhaps surprising range of technological support,
+given the relatively low number of Irish speakers.
+
+For basic text processing purposes, support is available for both spell 
+checking, through GaelSpell\footnote{\href{https://borel.slu.edu/ispell/}{https://borel.slu.edu/ispell/}}, and 
+grammar checking, through \textit{An Gramad\'oir}\footnote{\href{http://borel.slu.edu/gramadoir/}{http://borel.slu.edu/gramadoir/}}\footnote{Another
+grammar checker, based on the ``LanguageTool'' language checker described by \citet{naber2003rule}, was
+commenced during the early stages of this work, coupling the text analysis resources of
+\citet{elain09} with the grammar checking with the rules of \textit{An Gramad\'oir}, but needs
+some additional work to be fully integrated.}.
+
+For text analysis, there is a morphological analyser and disambiguator~\citep{elain09},
+a statistical part-of-speech tagger for tweets~\citep{lynn2015minority}, 
+a rule-based partial dependency parser~\citep{UDHONNCHADHA10.824}, and a
+treebank for statistical dependency parsing~\citep{lynn16treebank}, a subset of which
+is available mapped to the Universal Dependencies scheme~\citep{lynn2016universal}.
+
+Speech synthesis (text to speech) for all three dialects is available 
+online\footnote{\href{http://www.abair.ie}{http://www.abair.ie}}~\citep{chasaide2017abair}, 
+which is employed in a prototype chatbot for Computer Assisted Language Learning
+(CALL)~\citep{nichiarain2016chatbot}.
+
+In terms of resources, Irish fulfils many of the requirements of a BLARK. Although there
+are relatively few dictionaries, those that are available are available in digital form:
+``An Focl\'oir Beag''~\citep{odonaill1991focloirbeag}, the only monolingual dictionary
+of modern Irish; ``Focl{\'o}ir Gaeilge-B{\'e}arla''~\citep{donaill1977focloir}, the Irish--English
+dictionary of reference; and ``English--Irish Dictionary''~\citep{debhaldraithe1959english}, the 
+previous English--Irish dictionary of reference have all been digitised and made available online\footnote{http://www.teanglann.ie/ga/},
+while the current English--Irish Dictionary of reference is digital native\footnote{http://www.focloir.ie/}; 
+in addition to dictionaries, there is a publicly accessible terminology database\footnote{\href{http://www.tearma.ie/}{http://www.tearma.ie/}}~\citep{mvechura2010focal}, and
+as well as human-targeted dictionaries, there are lexicons intended for use in computing, including a WordNet for Irish~\citep{oregan2016lemongawn}
+and a high-quality morphological database~\citep{mchura2014}.
+In terms of corpora, the New Corpus for Ireland~\citep{Kilgarriff2006EfficientCD} contains 30 million words.
+
+\subsubsection{Character encoding}
+
+Although not a problem peculiar to Irish, the issue of character encoding, or, rather, of incorrectly recoded
+text, arises unusually often with Irish texts.
+
+In earlier days of computing, a number of 8-bit encoding schemes were employed in various areas around the world,
+to allow the local alphabets to be encoded in text. ASCII, the basic set of characters that are sufficient to
+encode the English alphabet along with a number of common characters, such as punctuation and mathematical operators,
+consists of less than 128 characters, which can fit into 7 bits of computer memory -- a ``bit'' encodes a single
+boolean 1 or 0, so a sequence of 7 holds $2^7$, or 128\footnote{To be clear, 0 to 127}, possibilities. As the computers of the time were typically
+able to address 8 bits (one byte) of memory at a time, this left one extra bit, allowing a further 128 characters to be used,
+which were typically arranged among the dominant languages of neighbouring countries: Latin1 served the Latin-script
+based languages of Western Europe, including the accented vowels used by Irish.
+
+As computers became more powerful, and able to address larger amounts of memory, a coding scheme named Unicode was
+with the goal of serving all of the world's languages. Because each character took more than 8 bits to encode,
+a number of standardised methods for serialising these characters were devised: the most common of which, UTF-8,
+is a \textit{variable-width encoding}, meaning that the higher the number representing the character was, the
+more individual bytes were required to represent it. One particular advantage of UTF-8 is that the set of ASCII
+characters remain unchanged, with the eighth bit serving to represent that the preceding byte was part of the
+same Unicode character. All of the accented vowels used in modern Irish require two bytes, while the remainder
+require one. When the characters are incorrectly recoded -- that is, when characters in, for example, UTF-8 are
+misinterpreted as having been encoded in Latin1 -- these two bytes are displayed as two individual incorrect
+characters: for example, ``{\'e}'' will be recoded as \texttt{Ã©}.
+
+
+\subsection{Particular challenges of Irish}
+
+While most languages have aspects that can be challenging for particular types of technology, there
+are a number of aspects of Irish that are particularly challenging for all language-related processing.
+
+\subsubsection{Numbers}
+
+Numbers in Irish are more complicated than in English; cardinal numbers have a slightly different form
+for use when counting, and numbers distinguish between human and non-humans in agreement for numbers
+between two and ten, along with twelve.
+
+Numbers in Irish can trigger a mutation in the noun that follows; for example, ``dh\'a'' (\textit{two})
+triggers lenition, while ``seacht'' (\textit{seven}) triggers eclipsis. This has posed a problem in
+the past for software localisation in systems that were designed with Western European languages in
+mind, that could only distinguish between singular and plural, if at all. Irish is far from the most
+demanding in its numeric needs -- Slovenian distinguishes between singular, dual, and plural, as well
+as the common Slavic genitive of quantity (five or more) -- but has benefited from the needs of other
+languages.
+
+
+\subsubsection{Case folding}
+\label{ssect:casefold}
+
+Case folding, in scripts such as the Latin script used by both Irish and English that distinguish 
+between upper, lower, and/or title case forms of letters, ``is the process of making two texts identical 
+which differ in case but are otherwise `the same'''\citep[s. 2.1]{Phillips:16:CMW}. The conversion from 
+upper or title case to lower case is typically referred to as ``lowercasing'' or ``decapitalisation''); 
+conversely, the conversion from lower case to uppercase as ``uppercasing'' or ``capitalisation''.
+
+Case folding is important in software that needs to compare text, as the number of combinations in the 
+simplest case of a single upper case and single lower case letter is $n^2$, where $n$ is the length of 
+the word. For example, the  word ``dog'' has three letters, and yields $3^2 = 8$ combinations: dog, dOg, 
+dOG, DOG, Dog, DOg, doG, and DoG.
+
+In English, it's a quite straightforward process to map from upper to lower case by mapping the letters 
+from A to Z to the letters from a to z. In other languages, the process is less straightforward: for 
+example, the Greek letter sigma ($\Sigma$) has two lower case forms: $\varsigma$ is used only when in 
+word final position, while $\sigma$ is used otherwise\footnote{The same was formerly true of English, 
+with `s' appearing only in word final position, with the ``medial s'', ſ, used otherwise}. In Dutch, the 
+digraph `ij' is considered a single letter ``and thus if a word starts with ij and has to be capitalized, 
+both the \textbf{i} and \textbf{j} are affected'', such as in ``IJsland'' 
+(\textit{Iceland})~\citep[p. 14]{donaldson2008dutch}.
+
+In Irish, initial mutations (aside from lenition) precede the word proper, and are considered separate
+from it: the eclipsed form of the word ``geata'' (\textit{gate}) is ``ngeata'', which is capitalised not
+as ``NGEATA'', but as ``nGEATA''. The affixation of a case-invariant part is not unusual: the Zulu 
+language uses such prefixes to ``denote proper names endowed with morphological structure as is customary 
+in Zulu''~\citep[p. 143]{bosch2011towards}, such as ``isiZulu'' (\textit{the Zulu language}), where the 
+case invariant prefix ``isi-'' typically denotes that what follows is a language. It's not uncommon to
+see even in English, where a case invariant ``e'' can be used to denote that something is ``electronic'',
+or, in possibly the most common instance in current times, in the brand names of Apple's consumer
+electronic devices: the iPhone, iPad, and iPod.
+
+The challenge with Irish's prefixes extends with the pre-vocalic mutations, \textit{n}, \textit{t}, and
+\textit{h}: \textit{n} and \textit{t} are written in lower case form followed by a hyphen, but without 
+when preceding an upper case vowel: ``\'ar n-athair'' (\textit{our father}) is in title case 
+``\'Ar nAthair''. Far more complicated is \textit{h}; \textit{n} and \textit{t} have always been part of
+the conventional Irish alphabet, and so have always been written in a way that their use as a mutation is
+distinct; \textit{h} had traditionally only been used as a prefix, or as a means of marking lenition of the
+previous consonant, but modern Irish has imported many words, particularly from Greek, that legitimately
+begin with \textit{h}, so to algorithmically convert words beginning with ``h'' to upper or title case 
+is not possible without the use of a dictionary\footnote{The closely related Scots Gaelic suffers less
+from these problems, as the ``h'' prefix is always written with a hyphen, and the hyphen is retained in
+upper case for pre-vocalic mutations.}.
+
+Fortunately, in almost all computing applications, lower case is the norm, which leaves only the 
+relatively minor issue of inserting a hyphen between \textit{n} and \textit{t} when their use is as a
+mutation.
+
+
+
+\section{Evaluation}
+\label{sect:introeval}
+
+There are many automatic evaluation metrics for estimating translation quality. All are based on
+matching n-grams against a reference translation, though the details vary greatly among the metrics.
+As \citet{ARCAN16.9} provide a comprehensive set of evaluations on the range of parallel corpora
+available for the English--Irish translation pair, to be able to use their results as a benchmark, I
+have opted to use the same evaluation metrics.
+
+BLEU~\citep{Papineni02bleu}, one of the first automatic metrics to be considered comparable with
+human judgement, is the de facto standard metric employed when evaluating statistical machine translation
+systems. BLEU scores candidate translations against a reference translation, or set of reference
+translations, calculating the overlap between the candidate and the reference. The scores for each
+segment, or sentence, are averaged across the whole test set, to give a single score.
+BLEU's score, although given as a number between 0 and 1 (low to high), is typically reported as a number
+between 0 and 100.
+
+METEOR~\citep{denkowski2014meteor} is an automatic metric for translation evaluation that is based on the
+harmonic mean of the precision and recall of unigrams, with recall given a higher weight than precision.
+Although it has language-specific features for approximate machine, such as stemming and synonyms, these
+are supported for a small number of languages (Irish is not included).
+
+chrF~\citep{popovic2015chrf} is a metric for translation evaluation that is based on characters, instead of
+words (or, rather, tokens), which is resistant to tokenisation differences, and to slight morphological
+errors.
+
+%\section{}

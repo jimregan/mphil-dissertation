@@ -1,0 +1,47 @@
+\chapter{Citizen's Information Boilerplace Removal}
+\label{app:bpremoval}
+
+Because of the cues provided by the generated HTML of the Citizen's Information website, only a trivial
+script was required to remove boilerplace, based on a pair of comments: one containing the phrase
+``start of Document'', the other beginning with ``Generated:'', and followed by the date and time the
+current document was last updated.
+
+\begin{verbatim}
+#!/usr/bin/perl
+
+use warnings;
+use strict;
+use utf8;
+
+binmode(STDIN, ":utf8");
+binmode(STDOUT, ":utf8");
+
+my $reading = 1;
+while(<>) {
+    if (/<!-- start of Document -->/) {
+        $reading = 1;
+        next;
+    }
+    if (/<!-- Generated:/) {
+        $reading = 0;
+        next;
+    }
+    if(m!</head>!) {
+        $reading = 0;
+        print;
+        next;
+    }
+    next if(/<div id="lastupdated"/);
+    next if(/<meta name="google-site-verification"/);
+    next if(/<link/);
+    next if(/<script/);
+    if($reading) {
+        print;
+    }
+}
+
+END {
+    print "</html>\n";
+}
+\end{verbatim}
+

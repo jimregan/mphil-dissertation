@@ -1,0 +1,644 @@
+% chap3.tex (Definitions and Theorem)
+
+\chapter{Development}
+\label{chap:devel}
+%\epigraphfontsize{\small\itshape}
+\epigraph{\textit{\small{I promised my right hemisphere it was never going to have to work full time}}}{``Oliwka N.''}
+
+\section{Rule-Based Machine Translation}
+\label{sect:ch3rbmt}
+
+In this section, the development of the RBMT system will be described, covering the resources used to create the system, 
+tools created to convert those resources and to more efficiently employ them, as well as outlining difficulties encountered.
+
+The creation of the RBMT system was part of an internship, which came with two primary
+requirements: the conversion of the bilingual data (see~\ref{ssect:devrbmtbil}) and the
+creation of a set of transfer rules.
+
+To this initial set of requirements were added the additional tasks of converting 
+IrishFST~\citep{elain09} for the analysis and generation of Irish, and the creation
+of a tool to allow the specification of rules in a manner that either allowed or
+approximated recursion in the rules.
+
+\subsection{Bilingual data}
+\label{ssect:devrbmtbil}
+
+The bilingual data used for the RBMT system is derived from data provided
+by The Department of Culture, Heritage and the Gaeltacht, consisting of
+English-Irish Dictionary (EID)~\citep{debhaldraithe1959english} and Focl{\'o}ir 
+Gaeilge-B{\'e}arla (FGB)~\citep{donaill1977focloir}, from which permission was
+granted to create an open source lexicon to contribute to the Apertium
+project.
+
+\subsubsection{Dictionary cleaning}
+
+The only source of information available on the XML editions of the dictionaries
+is from a blog post\footnote{\href{https://multikulti.wordpress.com/2014/01/04/how-to-retro-digitize-a-dictionary/}{https://multikulti.wordpress.com/2014/01/04/how-to-retro-digitize-a-dictionary/}} 
+that describes the process of creating the XML from the source data.
+
+The blog post mentions that EID had been scanned, OCRed, proof-read and marked
+up into XML, but that the XML structure had been lost during the proofreading
+process, and that attempts were made to infer the structure based primarily
+on the formatting that remained. FGB, on the other hand, was generated from
+the original typesetting files.
+
+%FIXME: Kevin did the OCR, mentioned that 30\% of the source words are not real words, etc.
+
+An initial extraction of the simplest (and most common) types of entry layout,
+based on a na\:ive regular expression-based extraction,
+had a quite high yield: 13076 entries, but missed out on some quite
+common words: for example, the entry for ``girl'' contains two subsenses, and 
+a number of empty sub-subsense entries (which in the original are explained by
+example, rather than by direct translation). The simplistic parser was unable 
+to account for these structures, and I was tasked with parsing the XML in a more
+robust manner.
+
+This loss of structure has proven to a quite difficult obstacle, and the first two
+attempts at parsing the XML directly lead to failure. The first attempt used
+a Java-based parser that attempted to read the sub-elements of each entry in a
+linear fashion, but attempting to compensate for some of the idiosyncracies in
+the XML was ultimately unsuccessful. A second attempt used Scala, and leveraged
+Scala's pattern matching facilities to emulate the regular expression-based
+extraction for simpler entries, with a fall-back to the serial approach used
+in the Java parser for complicated entries that did not match those simpler
+entries\footnote{As Scala runs on the JVM, Java-based classes are essentially 
+native to it.}. An initial attempt was made to make corrections to the XML structure
+while parsing, but this swiftly became over-complicated and unmanageable.
+
+While attempting to correct the structure of the XML, I came across some 
+erroneous components of the entries that were also present in the online
+version of the dictionaries; I therefore decided to revisit my strategy for
+parsing the XML, by making it a layered process.
+
+The first layer addresses mistakes in the XML in a simple perl script that
+uses regular expression-based transformations to the text before it is parsed.
+As well as simplifying the XML input, separating this stage of the parsing
+has the added advantage of being packaged in a way that can be easily passed 
+back to the maintainers of the online version.
+
+The scripts handle a number of different issues in the source, from errors to minor 
+inconsistencies. The difference in the structure of both dictionaries is perhaps 
+reflected in the number of transformations performed by each: 193 transformations 
+in EID, compared to 76 in FGB.
+
+Taking into account that EID was scanned, OCRed, and proofread, there are surprisingly 
+few OCR errors: at the time of writing, I have found only one such error\footnote{There 
+is also ``clo dubh'' given as translation for ``black-letter'', instead of ``cl\'o dubh''; 
+and ``duct aeir'' rather than ``ducht aeir'', but as I have not verified these entries 
+against the printed edition I cannot tell if these are transcription errors.}, where 
+``hurling'' was translated as ``lom\'ana\'iocht'' instead of ``Iom\'ana\'iocht'': that 
+is, with a lowercase ``L'' in place of an uppercase ``i''. 
+
+Most of the translations are aimed at consistency: for example, where a translation has
+ been mislabeled as a categorical label, or in merging separate translation elements that 
+would otherwise lead to incorrect translation entries being generated (``etc.'' is a 
+frequent offender).
+
+The current version of the parser operates on the transformed XML. As well as having 
+more consistent input than the previous attempts, it no longer attempts to parse the 
+entries in a purely linear fashion: for example, the element \texttt{$<$b$>$} in the 
+XML edition of FGB serves two purposes: when following $<$g$>$ it contains a word form, 
+or information from which to construct one.
+In other contexts, it can contain a subsense number, preceding a 
+translation of that other sense of the word.
+
+In both dictionaries, this re-use of elements is a frequent source of errors: one 
+particular example is of the \texttt{$<$r$>$} element in FGB. In a ``see also'' context,
+it signifies that a Roman numeral is part of the entry reference; when contained by a
+\texttt{$<$trans$>$} element, it contains the translation(s); and elsewhere it is used
+to contain usage information in parentheses. One frequently occurring problem in FGB is that some
+pieces that ought to have been marked as translations have not been, presumably because 
+the translation began with a parenthetical piece (most commonly ``(act of)'').
+
+The current parser, upon reading a $<$g$>$ element, checks if the next is $<$b$>$, and if so, 
+it is consumed by the $<$g$>$ element. As well as simplifying the parsing process, this ensures 
+that the grammatical forms are kept with the information about those forms.
+
+\subsubsection{Entry replacement}
+
+As Irish has no single citation form for verbs, it is common to either use the first person singular 
+present tense form (``t\'aim'', ``scr\'iobhaim'') or the second person imperative singular (``b\'i'', 
+``scr\'iobh'') as the citation form.
+
+It was clear from the outset that the translations of verbs in EID would need to be replaced, primarily 
+for consistency, as it uses the first person form of the verb, while both FGB and the morphological 
+analyser use the imperative. These replacements were quite simple to generate, using the analyser, but 
+the generation process uncovered a more pressing reason for replacing verb translations: the ``compression'' 
+of shared elements in verb phrases. For example, the entry ``yowl\textsuperscript{2}'' contains the translation 
+``Ligeann, casann, uaill'', where the common element of the verb phrases ``ligeann uaill'' and ``casann uaill'' 
+is shared among them, for conciseness.
+
+This changed the replacement process into a two-stage process: first, the whole translation text is 
+compared against a list of replacements for multiwords of this kind, which additionally contains pattern 
+rule information, to generate a single entry from the multiword; if the entry is missing from this list, 
+it is split by comma and semi-colon, and each individual word is checked against the original verb form 
+mapping list. If the word is absent from this list, it is marked to be ignored: an output entry is created, 
+but flagged so that it will not be used for translation -- words that cannot be generated by the analyser 
+cannot fully be utilised by the translator, as they cannot be inflected.
+
+Later private correspondence with Kevin Scannell\footnote{A noted developer of language technologies for 
+Irish and other Celtic and minority languages} revealed not only that he had OCRed EID, and created the 
+XML structure that had been lost, but his later work with a Manx translation of it had caused him to delve 
+a little deeper into the history of EID, which had, in turn, been based on an earlier French-English 
+dictionary. He warned that 30\% of the English headwords make no appearance in a corpus of contemporary English.
+
+Taking this warning on board, I checked first the list of words that contain a hyphen in the name, some of 
+which (such as ``black-letter'' and ``teen-ager'') had a distinctly archaic appearance. This lead to the 
+addition of a similar replacement mechanism for headwords; but, as FGB shared at least some history with EID, 
+I checked the translations of some of the hyphenated words against the list of words to be replaced in EID, 
+and found the same need for replacement there. Fortunately, the high degree of overlap meant that the same 
+replacement list could perform double duty. The list itself was, for the most part, automatically generated, 
+by generating both a single word and separated words from the hyphenated form, and checking these against 
+external lexical sources for English.
+
+Extending my inspection of translations beyond verbs, I found that a similar need for 
+replacement existed in other categories. For the most part, this needed nothing more 
+than the addition of the lists of multiword generation patterns that were already 
+required to treat the multiwords as a single unit, but where a whole translation needed 
+to be replaced, this required something extra in EID, because of the presence of 
+grammatical elements to mark gender.
+
+The recognition that these replacement mechanisms formed a basis for addressing language 
+change, by replacing the contents with something more relevant to the living languages, 
+lead to a further replacement stage, to precede the others: at the time the entry title 
+and its primary sense key are read, another list is consulted, from which a replacement 
+for the entire entry might be taken. 
+For example, figure~\ref{fig:commission2} contains the definition of the verb 
+``commission'' from EID; in modern use, all of these senses have been replaced 
+by the verb ``coimisi\'unaigh'', which does not appear in either dictionary. 
+This entry replacement mechanism allows the whole entry to be replaced by this 
+single translation.
+
+This mechanism allows the insertion of a different headword, where appropriate: 
+``ruaille\textsuperscript{2}'' in FGB exists to stand for ``ruaille buaille''. 
+As this is treated as a phrase, the XML entry contains no useful information. 
+With this mechanism, ``ruaille buaille'' can be inserted in place of ``ruaille''.
+
+\begin{figure}
+\textbf{commission}\textsuperscript{2}, \textit{v.tr.} 1 \textbf{a} Tugaim údarás do; údaraím. \textbf{b} Ainmním (duine) ina oifigeach; tugaim coimisiún do (dhuine). \textbf{c} Ordaím, iarraim (leabhar a scríobh, etc.). 2 \textit{Nau:} Armálaim, feistím (long).
+\label{fig:commission2}
+\caption{Definition of commission\textsuperscript{2} from EID.}
+\end{figure}
+
+\subsubsection{Current status}
+
+The latest extraction produced 88243 distinct entries. Although there is significant 
+overlap with the previous 13076 entries, it is not a complete overlap: the differences 
+need to be inspected, to ensure that the differences are not due to regressions 
+introduced in the new code.
+
+\subsection{IrishFST conversion}
+
+Translators created using Apertium use, for the most part, a common set of ``tags'' to
+describe linguistic features: \texttt{n} for nouns, \texttt{vblex} for (lexical) verbs, etc.
+This is in part due to the fact that the same small group of people have been involved
+in the development of the majority of language pairs, but primarily to simplify the
+transfer process: the same attributes will, by default, be copied from source to target,
+so features such as \texttt{sg} (singular) and \texttt{pl} (plural) do not need to
+have any specific action added in the default case. To take advantage of this, the 
+tagset used in IrishFST needed to be adapted.
+
+The first pass at performing this adaptation went quite easily, aside from a few
+corner cases where a pair of tags in one corresponded with a single tag in the other.
+More difficult, however, was the conversion of the lexicon to Apertium's conventions.
+
+Apertium uses a simple concatenative model of inflectional paradigms, where the common
+substring of the word has a paradigm reference added to it, from which the various forms
+of the word are expanded. IrishFST uses a more complex system where the continuation class
+of a word is added in its entry, from which the individual forms are computed, based on
+the word's stem.
+
+An initial set of conversions was performed using an Apertium tool for generating paradigms
+for an expanded list of forms; this tool, however, can only accommodate suffix inflection.
+
+One other difference between the systems is that Apertium's lexical processing unit, thanks
+to the use of ``tokenize-as-you-analyse'', is able to process multiword units as words-with-spaces;
+it also has a facility for breaking apart contracted words; to simplify the transfer of Irish
+conjugated prepositions, such as ``liom'' (with me), I opted to convert these prepositions to
+follow Apertium's conventions, which allows conjugated prepositions to be treated the same
+as unconjugated prepositions, deferring their combination to the orthographic post-processing
+module. This also allows a more satisfactory treatment of genuine contractions in IrishFST,
+such as ``s\'eard'', a contraction of ``is \'e an rud'' (\textit{that's the thing}), which
+can be split into its components, rather than, as in IrishFST, being tagged with the features
+of each, but with only the lemma of the first.
+
+The resulting converter, in comparison with the original conversion script, is quite complex.
+It performs the same paradigm generation as the existing Apertium tool, but takes into
+account Irish prefix mutations. This facility also allowed the pinpointing of several errors
+in IrishFST, where a number of prefixed forms were missing tags to represent the mutation.
+
+\subsection{Engine modifications}
+
+The needs of Irish required some changes to Apertium's lexical processing tools. Unmodified,
+Apertium's morphological generation component was unable to generate the correct form when
+a word beginning with a vowel was prefixed with ``n'' or ``t''; attempting to add separate
+entries for both upper and lower case word forms lead to two outputs: one correct, as well
+as the original incorrect form. I modified Apertium's lexical processor to add a mode that
+allows forms specified in this way to have a unique, correctly generated form.
+
+In addition to this, because of the nature of much of the publicly available bilingual data
+for Irish (see \ref{ssect:smtdata}), I extended the lexical processor to allow it to be
+provided with a list of characters to be ignored in processing, intended to discard some
+of the non-printing characters in Unicode, such as soft hyphen -- a character which is
+normally invisible, used to provide a place to hyphenate a word, to split it across lines in
+justified text.
+
+Although not strictly necessary, the modifications that made ignoring specified characters
+possible were similar to the changes that would be necessary for diacritic restoration; as
+this was now a relatively simple change, I added it, as quite a lot of publicly available
+Irish text is written without the use of fada (the acute accent).
+
+All of these modifications have been accepted into the public version control system of
+Apertium, and will be included in the next public release of the software.
+
+\subsection{Rule conversion}
+
+To meet the secondary requirement of a recursive, or quasi-recursive, means of specifying
+transfer rules, I used \texttt{apertium-transfer-tools}~\citep{sanchez06a} as a model (and,
+to a lesser extent, its successor, ruLearn~\citep{sanchez-cartagena16b}): this set of tools
+are designed to create Apertium rules from a parallel corpus, using techniques from Statistical
+Machine Translation.
+
+The basic format of such rules -- a set of words in both language, and their alignments -- seemed
+vastly preferable to the extremely verbose XML rules used by Apertium. The first limitation of
+this toolset is that it only generates rules appropriate for a single level of transfer, while
+it was quite apparent that for Irish-English, chunking would be necessary. ruLearn attempts
+to augment the original transfer tools package with a means of generating chunks, but it can
+only do so when there is an Apertium chunker already available, which is not the case for Irish.
+
+Adding to this, there are some significant mismatches between chunks in English, and those in
+Irish. One example is verb phrases in the continuous aspect: ``be going'' is (arguably) a single
+chunk in English, but the Irish ``b\'i ag dul'' must be two, to allow the subject to be placed
+after the finite verb ``b\'i'', and before the verbal noun phrase ``ag dul''. 
+
+Another complication is that, in contrast with a language such as Spanish, where the base case of
+most Apertium rules is typically quite regular, most chunking rules between English and Irish
+will have more than one regular correspondence: in phrases containing a determiner, if it is
+the English indefinite article, it must be omitted; if it is ``this'' or ``that'', the rest of
+the noun phrase will have the definite article ``an'' as its leftmost component, and ``seo'' or
+``sin'' as the rightmost; for a verb phrase, the preferred translation could be a verb, or, in
+the case of a number of frequent verbs, the preferred Irish equivalent could be a copula phrase:
+``like'' becomes ``is maith le'', ``prefer'' becomes ``is fearr le'', etc.
+
+Apertium's transfer system allows common operations to be placed in macros, which can be shared
+among rules, simplifying them greatly. One common macro operation necessary for English to Irish
+is to add the type of a determiner to the chunk's tags: Irish genitive constructs have a definiteness
+restriction, much like that of the Anglo-Saxon genitive in English: only one component may be definite;
+at the level of an individual chunk, it cannot be known if the chunk is part of a genitive (or
+prepositional) phrase, so the chunk is tagged for interchunk, where it can be known, and during
+reordering, the tag changed as a signal to the postchunk processor to remove the article before
+output. Similarly, where both sides of a phrase that \textit{seems} like a genitive use some
+other definite determiner -- ``my photos of my holiday'' -- this chunk annotation is used to
+replace the preposition with ``de'', instead of using a genitive construct.
+
+Rule conversion, rather than replacement of the transfer mechanism, was selected because developing
+a replacement transfer component was not feasible within the timeframe of the internship, and because
+the prior experience of Apertium has shown that fixed-length patterns can be sufficient.
+
+I became overly focused on finishing the rule converter. The first approach I took to recursive
+expansion was overly complicated, trying to expand both sides of the rule at the same time, while
+attempting to keep the positional indices used by the macros updated. In the week before the
+deadline, I thought of a simpler approach, where each token contained both source and target sides
+of the rule, and words inserted into the target side were appended; after expansion, these extra
+parts are discarded from the source side, while on the target side the tokens are reordered,
+according to their position.
+
+While this part of the rule converter works, the more important part does not: as each multi-part
+rule contains multiple versions of the same tokens to be expanded, which must be kept together
+to maintain the rule as a whole, the expansion method for single-part rules simply cannot work.
+The realisation came too late to recover from, and while work is ongoing to expand the rules
+by hand, there is simply too much left to do to even attempt to run the system.
+
+\section{Statistical Machine Translation}
+\label{sect:ch3smt}
+
+In this section, the details of training SMT systems will be described, including a description of the 
+corpora employed. A particular point of interest in SMT are the efforts to incorporate linguistic information into the SMT 
+process, such as factored models and hierarchical models, which seemed closest, at least in spirit, to
+the knowledge-driven approach.
+
+The purpose of investigating SMT was originally intended as a means of comparison
+with the rule-based system, of acquiring data with which to expand it, and to investigate a possible 
+method of hybridisation, where the rule-based component was to be used as a fall-back, almost in the
+opposite manner to \citet{sanchezmartinez09d}: the input was to be segmented into light-weight, marker-based
+chunks~\citep[e.g.,][]{gough2004robust}, but instead of inserting statistically-derived phrases into the output of the rule-based system, 
+as in that work, each chunk would be checked to see if it was present in the statistical phrase table; 
+if not, it would be passed to the rule-based system, as a fall-back, using the XML mechanism provided
+by Moses to insert translation candidates from external sources.
+
+This, however, was not to be: the reality of the data most commonly available -- and, as such, most likely
+to be used in the training of SMT systems, generally -- was that it suffered quite severely from issues
+of data quality.
+
+\subsection{Data}
+\label{ssect:smtdata}
+
+\citet{ARCAN16.9} list a number of available sources of parallel text for English Irish MT (reproduced in figure~\ref{fig:smtcorpora}); however, I have concentrated
+on using only parallel text available from the OPUS project~\citep{TIEDEMANN12.463}. Initially, this was simply as a test after
+installing Moses; however, as OPUS is perhaps the only large scale effort to make available parallel texts in multiple languages,
+and is both widely advertised -- for example, OpenNMT's FAQ\footnote{\href{http://opennmt.net/FAQ/}{http://opennmt.net/FAQ/}}
+lists only OPUS as a source of parallel text -- and widely used, it seemed the most likely source of data
+for anyone who would attempt to build an SMT system for English and Irish.
+
+Of the subcorpora available as part of OPUS that contain text in Irish, two in particular stood out as the potential
+sources of unusual translations from the baseline model: the EU Bookshop Corpus~\citep{SkadinsEA:LREC14} and the
+KDE4 corpus~\citep[s. 2.3]{Tiedemann:RANLP5}.
+
+In addition to the existing parallel data, I created a corpus by scraping the Citizen's Information website.
+As I have not used it in my SMT experiments, I have not discussed it in this section, but as it may be a
+useful resource, I have provided a brief description of its construction in appendix~\ref{app:citinfcorpus}.
+
+\subsubsection{EU Bookshop Corpus}
+
+The OPUS EU Bookshop Corpus was created by crawling PDF documents from the EU Bookshop website. 
+As many of these documents are relatively old, a large amount of the text available in these PDF documents has been 
+inserted using Optical Character Recognition (\GLS{OCR}); an additional complication is that, due to the nature of documents
+produced by the EU, these documents can quite legitimately contain sections or phrases in other EU languages. Because of
+this, the OCR system in use for these documents has been trained not on a single language, as is conventional, but on all
+EU languages. In a conventional, single language OCR system, there are certain issues in accuracy due to visual similarity
+of character combinations within the language: \texttt{m} and \texttt{in} can look similar, and can therefore be confused.
+
+This is a widely known problem, and tools exist to tackle many of these issues, for single languages. The OCR text produced 
+by the EU Bookshop, however, has the additional complication of multiple scripts, and even within a single script, there
+is a confusion of accented letters: as well as, for example, the visual similarity of many letters of the Greek or Cyrillic
+alphabets -- Greek Ρ for Latin P, etc. -- which existing tools do not take into consideration, there is also a confusion
+of accented characters, with the acute accent (Irish fada) being replaced with umlaut, macron, and grave accents.
+
+As well as the issue of OCR, the EU Bookshop Corpus contains a number of lines where text boundaries have been incorrectly 
+detected in the process of conversion from PDF, with an automatic correction method employed to remove spaces from the
+words~\citep[p. 1851]{SkadinsEA:LREC14}; this, however, does not take OCR errors into account, as in figure~\ref{fig:ocreubkshp}.
+
+\begin{figure}
+\begin{verbatim}
+'Article l5l
+If, within six weel < s of its being convened,the Conciliation 
+Committee approves of th9 v9te1 aiäint text
+\end{verbatim}
+\label{fig:ocreubkshp}
+\caption{Examples of OCR errors from the EU Bookshop corpus.}
+\end{figure}
+
+As the correction method employed does not account for such errors, it cannot
+correct, e.g., `weel < s' to `weeks', nor can it correct the word boundaries of
+the non-existant word. This issue of spacing is possibly the result
+of wider spaces between words in justified text, which would also explain the existence of the opposite problem: missing
+spaces between words~\citep[p. 1853]{SkadinsEA:LREC14}.
+
+In testing a sample set of 200 sentences of English-Latvian~\citep[pp. 1852--1853]{SkadinsEA:LREC14}, it was found that
+only 59.8\% of the sentences were considered ``good''. A set of automatic corrections were applied to that language
+pair, with the resulting, much smaller, corpus achieving 85\% of sentences being considered ``good'' by human raters.
+
+\subsubsection{KDE4 Corpus}
+
+Unlike the EU Bookshop corpus, which was known to have quality issues due to its source data, the KDE4 corpus, which
+originates in the localisation files used for programs in the KDE4 desktop environment, comes with no quality warnings.
+This is not, however, to say that it does not contain quality issues, many of which seem to have been introduced by the 
+conversion process. One example, visible in figure~\ref{fig:kdeenc}, is the mistaken recoding of texts from the 8-bit 
+Latin1 encoding, to UTF-8. Also in that example, the segments have misaligned, possibly due to incorrect insertion on
+the English side, or incorrect deletion on the Irish.
+
+\begin{figure}
+\begin{verbatim}
+Shrink Icons	& OllmhÃ³r
+& Default Size	& An- mhÃ³r
+& Huge	& MÃ³r
+& Very Large	& Measartha
+& Large	& Beag
+& Medium	An- bheag
+& Small	Cumraigh an CÃºlra...
+\end{verbatim}
+\label{fig:kdeenc}
+\caption{Align of incorrectly converted and misaligned segments from KDE4.}
+\end{figure}
+
+
+Secondly, instructions to translators have been included, as shown in figure~\ref{fig:kdetrans}.
+
+\begin{figure}
+\begin{verbatim}
+Your names	Kevin ScannellEMAIL OF TRANSLATORS
+Your emails	kscanne at gmail dot com
+January	Month
+\end{verbatim}
+\label{fig:kdetrans}
+\caption{Instructions to translators misidentified as translations, from KDE4.}
+\end{figure}
+
+Finally, there seem to have been misaligned files in the corpus, as in figure~\ref{fig:kdemisalign}:
+the translations on the English side seem to refer to a different program to those on the Irish.
+
+\begin{figure}
+\begin{verbatim}
+Search Box	SonraÃ­ BibleagrafaÃ­ocha (BibTeX) Name
+Newspaper activity	SonraÃ­ BibleagrafaÃ­ocha (BibTeXML) Name
+\end{verbatim}
+\label{fig:kdemisalign}
+\caption{Misaligned segments from KDE4.}
+\end{figure}
+
+\subsubsection{Data cleaning}
+
+\citet{GJ2008} present a method of automatically increasing the coverage of Translation Memory systems,
+by allowing the specification of simple rules, using regular expressions, to automatically translate
+items such as dates, times, etc. During an earlier phase of my internship, I adapted the Duckling
+parser\footnote{\href{https://github.com/wit-ai/duckling\_old}{https://github.com/wit-ai/duckling\_old}} 
+for Information Understanding to Irish: it parses similar items, converting them to a 
+language-independent representation, which seemed an ideal way of implementing a similar system of
+extending Translation Memory: the choice of programming language -- Clojure, a language that uses Java's JVM -- seemed a good fit with
+existing open source Translation Memory systems, all of which (that I am aware of) are written in Java.
+Although Duckling is able to parse such expressions, it is unable to generate them, and adding this
+facility did not seem an appropriate use of time; additionally, Facebook (the developers of Duckling)
+later rewrote it in a different, non-JVM language\footnote{Facebook converted my code, so the new version
+retains support for Irish: \href{https://github.com/facebookincubator/duckling}{https://github.com/facebookincubator/duckling}}.
+
+Faced with the various errors in the EU Bookshop and KDE4 corpora, I developed a proof-of-concept program
+named Duckegg\footnote{Named both reflect the influence of Duckling, and as a nod to a former teacher, who
+would refer to a zero in a test as ``a big fat duck egg'', in reference to the fact that, due to the relative 
+haste in which it was written, the software will not win any design awards.} to perform a number of automatic
+corrections.
+
+Duckling inspired it in two ways: first, Duckling's pattern matching can use regular expressions, or can build
+more complex patterns based on existing patterns; second, Duckling's patterns aim to be robust to informal writing.
+
+Most of the proof-of-concept corrections implemented in Duckegg are specific to the gaois.ie corpus (referred
+to as ``Irish legislation'' in figure~\ref{fig:smtcorpora}): one particular check is for Statutory Instrument
+numbers, which frequently occur in the corpus. Although the English side of the corpus is quite clean\footnote{The
+text is publicly available on \href{http://www.irishstatutebook.ie/}{http://www.irishstatutebook.ie/}}, the
+Irish text shows a number of OCR errors, so the relevant check compares the Irish with the English, using
+a fuzzy match that takes into account common OCR errors in numbers.
+
+Another tool provides a variation of the common ``find and replace'' operation, but adding translation context:
+the replacement will be made if and only if the search patterns for both source and target languages match.
+For example, ``dta'' could be a corruption of the Irish ``d\'ata'', or it could be an abbreviation that has been
+lowercased. If the English side contains the word ``date'', the replacement can be made with more certainty.
+
+Another tool targets a specific set of errors due to a mismatch in tokenisation: a number of the English sentences
+end with a phrase like ``(No. 42)'', whereas, due to poor or missing tokenisation on the Irish side, their 
+translations end with ``(Uimh.'', without the number. The tool finds such sentences and appends the number and
+right bracket from the English side to the Irish.
+
+Finally, another tool checks if either source or translation is missing, or is identical to the other side, to target
+a large number of sentence pairs where the English was placed on both sides of the translation. Although, due to
+the nature of the corpus, there are a number of instances where the sentences contained amounts in euros related to fines, and are therefore
+legitimately identical on both sides, omitting these number-only translations is not likely to have much of a negative
+impact on an SMT system trained on such data; the same cannot be said about including hundreds of sentences of English
+in place of Irish.
+
+One other check that was attempted, but ultimately discarded, was influenced by the presence of the names of
+translators in the KDE4 corpus. I attempted to train a statistical Named Entity Recognition (NER) system, with the
+intent of checking both sides of the corpus to ensure both sides contained equivalent entities, and to print
+a warning if not. Due to the nature of the training data, the NER system is quite successful at recognising
+Irish names (i.e., containing a patronymic particle), but quite poor otherwise. This meant that the matching
+of the Irish NER model was much less capable than the pretrained English model, so the experiment was
+ultimately abandoned as it was unable to work as intended.
+
+
+\begin{figure*}
+\begin{center}
+\begin{tabular}{l|r|r|r}
+\hline
+Corpus & \# lines & \# English words & \# Irish words \\
+\hline
+DGT & 36,275 & 864,373 & 950,500 \\
+EU Bookshop & 121,042 & 2,606,607 & 2,704,091 \\
+EU constitution & 6,267 & 125,553 & 126,355 \\
+Focale & 213,683 & 414,730 & 440,228 \\
+GNOME & 75,051 & 288,916 & 297,882 \\
+Irish legislation & 132,314 & 2,691,928 & 2,792,595 \\
+KDE4 & 110,138 & 439,273 & 523,614 \\
+News-2007 (English) & 3,782,548 & 90,490,396 & / \\
+Ubuntu & 191 & 1,038 & 1,103 \\
+Wikipedia Titles & 17,421 & 35,165 & 36,760 \\
+Irish sent. bank & 3,895 & 31,655 & 32,800 \\
+Food and Beverages & 339 & 696 & 712 \\
+Wikipedia (Irish) & 246,290 & / & 4,047,229 \\
+Textbooks & 373,401 & 5,929,635 & 6,568,295 \\
+Apertium & 720 & 804 & 791 \\
+\hline
+total (parallel) & 1,096,117 & 13,573,234 & 14,684,356 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Summary of available corpora for English and Irish, reproduced from \protect\citet[p. 568]{ARCAN16.9}}
+\label{fig:smtcorpora}
+\end{figure*}
+
+%OpenNLP namefinder - person
+%       TOTAL: precision:   91.79%;  recall:   86.82%; F1:   89.23%.
+%      person: precision:   91.79%;  recall:   86.82%; F1:   89.23%. [target: 14631; tp: 12702; fp: 1136]
+
+
+%\include{citinf}
+
+\subsection{Phrase based training}
+
+For the phrase based models, because a comprehensive examination of the translation performance on various
+parallel corpora was available, and because of the poor quality of a significant portion of that data,
+I decided to compare the existing public results with the result of using the cleaning script that
+accompanies the Moses decoder, which removes sentences where the ratio of words is 9:1 or greater. 
+As well as that, knowing that the oddity of case folding in Irish would
+mean that using the standard lower casing method would lead to the presence of a second, artificial form
+of a number of words, I decided to additionally compare the performance of systems trained with and
+without correct case folding. The script used to do so is relatively uncomplicated, and is reproduced in 
+figure~\ref{fig:tolowersh}. Moses~\citep{Koehn:2007:MOS:1557769.1557821} was used for all SMT experiments.
+
+\begin{figure}
+\begin{verbatim}
+#!/bin/bash
+TRANSLIT=$(cat <<'__HERE__'
+$wordBoundary = [ [:Z:] [:P:] ];
+::NFD();
+$wordBoundary { n } [AEIOU] > n\- ;
+$wordBoundary { t } [AEIOU] > t\- ;
+::Any-Lower;
+::NFC();
+__HERE__
+)
+
+uconv -x "$TRANSLIT"
+\end{verbatim}
+\label{fig:tolowersh}
+\caption{Script to perform correct lowercasing of Irish.}
+\end{figure}
+
+\subsection{Factored models}
+
+The same corpus was used for factored models as phrase-based; the data that was part of speech tagged was the cleaned version,
+with the Irish lowercased with the Irish-specific method.
+
+\subsubsection{Processing}
+
+Despite the availability of rule-based tools for the morphological analysis and tagging of Irish, IrishFST~\citep{elain09}, 
+I chose to train a set of statistical models for the tagging and lemmatisation of Irish. 
+The primary motivation was to use a method where a single tagged wordform was selected, correct or not -- the constraint
+grammar used to disambiguate the output of IrishFST makes no guarantee that its output will be unambiguous, which poses
+a difficulty in systems that expect a single tagged output form.
+
+A secondary motivation was to follow the workflow most amenable to practitioners of statistical NLP, who tend to prefer not 
+to use rule-based tools where possible, albeit with certain exceptions -- for example, the sentence splitting and word tokenisation
+tools provided originally by the Moses SMT toolkit, which are widely used by other MT and NLP systems, are quite
+decidedly rule-based: the sentence uses a list of known abbreviations to avoid incorrect sentence breaks, much like
+the components used in Translation Memory systems, which typically use Segmentation Rule eXchange (\GLS{SRX})~\citep{milkowski09srx}.
+
+The options for the statistical processing of Irish are somewhat limited. The only publicly available
+model that I was able to find was for Google's SyntaxNet dependency parser, which was trained on the
+data from the Universal Dependencies project~\citep{lynn2016universal}. As this dataset is quite small,
+I chose instead to train both a part of speech tagging model and lemmatisation model on the Irish Dependency Treebank~\citep{lynn16treebank},
+using Apache  OpenNLP\footnote{\href{https://opennlp.apache.org/}{https://opennlp.apache.org/}}, primarily because of prior
+familiarity, although OpenNLP as a toolset is designed with a quite broad-minded approach to NLP: most of
+the standard facilities are statistically oriented, but several co-exist with rule-based equivalents.
+
+A number of corrections were applied to the tagging of the corpus, primarily to repair the output of
+the guesser module of IrishFST, both to reduce the size of the tagset, and to repair its 
+lemmatisation\footnote{The corrected version is available online: \href{https://github.com/jimregan/IrishDependencyTreebank}{https://github.com/jimregan/IrishDependencyTreebank}} -- 
+most of the words with guessed tags were compounds, for which the lemma of the head of the compound was
+given in place of a lemma for the whole.
+
+\subsubsection{Multiwords}
+
+The Irish Dependency Treebank, having been initially tagged with IrishFST, makes use of its tokenisation, and therefore
+contains a number of tokens that represent multiword entities. As these cannot easily be reproduced in
+other systems, the individual words that these multiwords are composed of needed to be retagged 
+individually.
+
+Splitting the multiwords into their individual words has posed some difficulties: in a number of cases, 
+the multiwords contain calcified words which no longer have meaning in modern Irish. For example, 
+``moite'' in the phrase ``c\'e is moite'' (\textit{except}) is absent from dictionaries of the 
+modern language, except as part of that phrase\footnote{eDIL (\href{http://www.dil.ie/32548}{http://www.dil.ie/32548}) lists it as a comparative of ``m\'or''}, 
+and ``dt\'i'' in the phrase ``go dt\'i'' is a calcified present subjunctive form of the verb ``tar'', 
+but can legitimately be analysed in the modern language as the eclipsed forms of two nouns which 
+share the lemma ``t\'i'': a feminine noun meaning \textit{line} or \textit{track}, and a masculine 
+noun meaning \textit{tee} (as in golf). These were retagged along linguistic lines, both because
+of the lack of an acceptable alternative, and to not introduce confusion for similar contexts: in
+these examples, of a comparative adjective after ``is'', and of a subjunctive following ``go''.
+
+The names of political parties are typical of the opposite problem: for example, ``Sinn F\'ein'' is
+composed of two pronouns, yet behaves as a single (masculine) proper noun. In such cases, both
+components were marked with the tags of the whole.
+
+Even though it is not a meaningful metric to evaluate a statistical NLP tool on the data it was trained on,
+where it can be expected to achieve misleadingly high levels of accuracy, the reported accuracy of 99.4\%
+seemed, if anything, somewhat low. OpenNLP's evaluation tool can report on which words failed to meet
+expectations, and a quick examination was somewhat informative: although in large part, the errors were 
+genuine, such as in the phrase ``as ascaill a mháthar'', where for ``a'', OpenNLP predicted the infinitival 
+particle, rather than the masculine possessive determiner (meaning \textit{his}), there were some ``errors''
+which were not errors on OpenNLP's account, but rather errors in the training data: for example, in the phrase
+``maidir le bhfíorú'', ``le'' in the corpus was mistagged with \texttt{Prep:Poss:3P:Pl} -- which cannot be 
+generated by IrishFST -- rather than the correct \texttt{Prep:Simp}, which OpenNLP correctly predicted. 
+Similarly, in ``uair an chloig'', the word ``chloig'' in the corpus was mistagged with 
+\texttt{Noun:Masc:Gen:Sg:Len}, rather than the correct \texttt{Noun:Masc:Gen:Sg:DefArt}, which OpenNLP also 
+correctly predicted.
+
+As OpenNLP has the option to include a tag dictionary, an attempt was made to include the entire output
+of IrishFST as a tag dictionary; however, this attempt was unsuccessful because of the extremely high
+number of tags (3098) that are present in IrishFST but absent from the training data.
+
+
+
+
+\section{Neural Machine Translation}
+\label{sect:ch3nmt}
+
+The data for Neural Machine Translation was processed initially in the same way as the data for factored models,
+then tokenised using BPE~\cite{sennrich2015neural}. Training and translation was performed using the OpenNMT~\citep{2017opennmt}
+toolkit.

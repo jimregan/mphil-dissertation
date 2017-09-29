@@ -1,0 +1,527 @@
+% chap2.tex (Definitions)
+
+\chapter{Background}
+\label{chap:litreview}
+\epigraph{\textit{\small{It's some kind of this one}}}{``Oliwka N.''}
+
+\section{Introduction}
+
+Knowledge-driven, or rule-based, approaches to Machine Translation are sometimes
+contrasted with data-driven, or statistical, approaches by characterising the difference
+as that of rationalism versus empiricism~\citep[e.g., ][p. 4]{Somers2003}, although
+the difference is not quite so clear-cut: modern knowledge-driven systems are created
+with rules and lexicons that are corpus-derived, while data-driven systems typically
+include one or more pre- or post-processing stages that are, if not essentially rule-based,
+then at least heuristic (often in spite of the fact that statistical equivalents are
+available).
+
+Another way of framing the difference can be made in terms of how both approaches scale,
+in terms of the exceptional aspects of language: knowledge-driven systems -- particularly
+transfer-type systems that use rules based on parts of speech -- scale poorly, as it can be
+difficult to encode the irregularites; they do, however, degrade well: novel coinings that follow the
+coded syntactic norm will tend to translate well. Data-driven systems, on the other hand,
+scale well to the exceptional, as they do not have rules to which there can be an
+exception -- there are merely probabilities of words in one language, or sequences of them, being translated
+as words in the other. They also, however, tend to degrade quite poorly, as they lack
+the knowledge of what could or ought to be the default. There are, as will be mentioned, approaches
+that incorporate linguistic information in an attempt to provide this sort of fallback, but
+as a general rule of thumb, a statistical system is more likely to know how to ``kick the bucket'',
+while a rule-based system will typically be better at handling ``dancing purple elephants''.
+
+The aim of this chapter is to provide the background information necessary to understand
+Apertium, the rule-based system used to develop a knowledge-driven machine translation system
+from English to Irish; as well as to introduce the ideas which underpin data-driven 
+approaches with which it is compared: primarily, Statistical Machine Translation, and Neural
+Machine Translation.
+
+Translation Memory, a form of Computer Assisted Translation, deserves mention, if only to
+differentiate it from the automatic approaches involved in Machine Translation. At their
+simplest, Translation Memory systems segment a document into sentences, and replace those
+that have previously been translated with those translations; most will offer suggestions
+of incomplete translations, using the same mechanisms as spell checking software, based on
+previously translated sentences which have significant overlap with the sentence being edited.
+
+Example-Based Machine Translation (\GLS{EBMT}) is often conflated with Translation Memory. Both
+use the sentence as the basic unit of translation, and both appeared at roughly the same time;
+however, EBMT is intended as a fully automatic method of Machine Translation, rather than as
+a translator's aid: where a translation memory will present an incomplete sentence for the
+translator to complete, EBMT attempts to complete the sentence itself. This often involves
+the use of linguistic information: in one approach, the parsed version of the corpus is stored
+alongside the text, and when a sentence is encountered that differs by a single constituent, if
+an equivalent constituent can also be found within the corpus, the EBMT system can reliably
+insert that constituent to produce the requested translation. With the advent of approaches
+to SMT that involve the use of linguistic data, however, the differences between EBMT and SMT
+became fewer, and EBMT approaches were effectively subsumed by SMT.
+
+Hybrid systems, which combine both approaches, will be briefly outlined, in particular those
+that combine Apertium with a statistical component, although little mention is made in the
+remainder of this dissertation; this is, unfortunately, due to the shift in the basic research
+question that had been underlying this dissertation, which had originally been to investigate
+the performance of such a hybrid system, but driven primarily by the rule-based component,
+rather than using statistical methods to rank output, as is more common. The material is retained
+in the hope of anticipating the reader's question ``isn't there some way of getting the best of
+both types of system?''
+
+Neural Machine Translation systems are a refinement of Statistical Machine Translation using 
+Artificial Neural Networks (\GLS{ANN}), which are the current state of the art in Machine 
+Translation. Artificial Neural Networks, as the name suggests, are an attempt to model
+the brain's neural networks; although neuroscience remains an important influence, however,
+not enough is known about how the brain operates to truly mimic its operation, and modern
+neural networks (the ``artificial'' is typically dropped) are inspired by the brain, but
+make no claim of copying its actual operation.
+
+\subsection{Finite State Transducers}
+
+Finite state transducers are, or can be, used to model the translation process in both
+knowledge-driven and data-driven forms of translation. Finite state transducers are a 
+type of finite state machine, that uses two memory tapes: input, and output. In contrast
+with a finite state automaton, which uses a single input tape, and can accept or reject
+an input, a finite state transducer provides a mapping between input and output.
+
+Finite state machines are in broad use; one example is the controller chip in a computer
+keyboard. A keyboard has a number of control keys, in addition to the usual characters of
+the alphabet, such as ``Shift'', ''Ctrl'' (Control), etc. When one of these keys is pressed,
+the controller enters a different state, causing a different signal to be emitted: when no
+control key is pressed, the ``A'' key sends the signal that is interpreted as the lower case
+character ``a'', while when the Shift key is pressed, it sends the upper case character ``A''.
+
+A finite state acceptor extends the finite state machine so that there are transitions between
+states, and adds a start state, and a set of final states. For example, a lock that accepts
+a PIN code will be in the initial state when locked, and no code is being entered. It enters
+an accepting state when the first number is entered, and remains in the accepting state while
+the code remains valid. Upon completion of the code, if the code is valid, it will enter a
+final state, and will unlock. At any accepting state, the input of an incorrect number
+will cause it to reject. A spell checker dictionary can be modeled as a finite state acceptor.
+By adding input labels to each transition, the checker can output a correctly spelled word by
+concatenating the input labels it has accepted, or it can show in an unrecognised word the
+portion of the input that caused rejection. 
+
+Such a finite state acceptor can be modeled as
+a labeled directed graph, where each state represents a vertex of the graph, and each labeled
+transition is a labeled edge between vertices. A finite state acceptor can be formally defined
+as the quintuple $(\Sigma, S, s_0, \delta, F)$, where $\Sigma$ is the input alphabet: a finite,
+non-empty set of symbols; $S$ is a finite, non-empty set of states; $s_0$ is the initial state,
+an element of $S$; $\delta$ is the state-transition function, $\delta: S \times \Sigma \rightarrow S$;
+and $F$ is the set of final states, a subset of $S$.
+
+Finite state transducers add labels to each transition for both input and output, which can be
+asynchronous, through the use of the empty string, $\epsilon$. A typical use of finite state
+transducers is in morphological analysis. For example, the word ``babies'' can be modeled as
+\texttt{b:b a:a b:b i:y e:$\epsilon$ $\epsilon$:$<$n$>$ s:$<$pl$>$}, where ``i'' on the input
+becomes ``y'' on the output, the epenthetic ``e'' is deleted, the symbol $<$n$>$ inserted, and
+the letter ``s'' mapped to the output symbol $<$pl$>$.
+
+Like an acceptor, a finite state transducer can be modeled as a labeled directed graph. One
+form of transducer can be modeled as the sextuple $(Q, \Sigma, \Gamma, I, F, \delta)$, where
+$Q$ is the set of states; $\Sigma$ is the input alphabet: a finite, non-empty set of symbols;
+$\Gamma$ is the output alphabet: also a finite, non-empty set of symbols; $I \subset Q$ is the
+set of initial states; $F \subset Q$ is the set of final states; and 
+$\delta \subseteq Q \times (\Sigma\cup\{\epsilon\}) \times (\Gamma\cup\{\epsilon\}) \times Q$
+is the transition relation, where $\epsilon$ is the empty string. This form of transducer is
+known as a \textit{letter transducer}~\cite[pp. 14--63]{roche1997fst}.
+
+Finite state transducers (and acceptors) can be \textit{weighted}, by adding a weight, such
+as a corpus derived probability, as an additional label. Many SMT systems extend this further
+to a hypergraph structure, where a number of additional labels are added, such as a number of
+weights, added by ``feature functions''~\citep{och2002maxent}, and/or linguistic information.
+
+Recurrent neural networks (\GLS{RNN}) have long been used to model finite state acceptors with output that 
+are equivalent to finite state transducers~\citep[e.g.,][]{Mikel96beyondmealy}. Most current
+work on Neural Machine Translation use an encoder--decoder model~\citep{cho2014rnnencdec},
+where the input is transformed to a fixed-length vector, and the output is transformed from
+this vector. Most modern work on NMT uses variants of RNN, such as Long Short-Term Memory
+(\GLS{LSTM}) that include a memory facility, giving them an expressive power greater than
+those of finite-state transducers.
+
+
+\section{History}
+\label{sect:bghist}
+
+Although ideas of how to mechanise the process of translation can be found as early as the seventeenth 
+century~\citep[chap. 1]{hutchins1986machine}, Machine Translation as a field of study is typically
+considered to have begun shortly after the invention of the digital 
+computer~\citep[chap. 1]{koehn2010statistical}. Warren Weaver, a researcher at the Rockefeller Foundation, 
+published a memorandum named ``Translation'' in which he outlined the possibility of using computers for 
+translation~\citep{hutchins2004weaver}, proposing the use of Claude Shannon's work on Information Theory 
+to treat translation as a code-breaking problem -- an approach that would later provide the foundations 
+of Statistical Machine Translation (\GLS{SMT}). This memorandum was quite prescient in 
+more ways than one: Weaver also cited work by McCullough and Pitts on artificial neural networks, which, 
+due to recent advances in ``deep'' neural networks, serve as the basis of Neural Machine Translation, 
+the currently dominant research paradigm.
+
+Early research into Machine Translation was concerned with the needs of the Cold War, and researchers 
+primarily concentrated on the Russian-to-English and English-to-Russian translation directions, in the 
+U.S. and U.S.S.R. respectively. In January 1954 the first public demonstration of an MT system took place 
+at IBM's headquarters in Georgetown. In this Georgetown experiment, over sixty sentences were translated 
+from Russian to English, leading to a surge of interest in MT~\citep{hutchins2004georgetown}. 
+
+In the years that followed, MT systems were developed by American universities at the behest of organisations such as the U.S. Air Force, Euratom or the U.S. Atomic Energy 
+Commission~\citep[chap. 4]{hutchins1986machine}.
+
+In 1964 the U.S. government, concerned about the lack of progress in the field of MT despite significant 
+expenditure, commissioned a report from the Automatic Language Processing Advisory Committee (ALPAC). 
+The ALPAC report, published in 1966, concluded that MT was unlikely to achieve human-quality translation 
+in the foreseeable future~\citep[chap. 8.9]{hutchins1986machine}. 
+
+As a result, MT research was almost abandoned for over a decade in the U.S.; in spite of these 
+difficulties, SYSTRAN, a company specialising in MT software, was established successfully in 1968: 
+their MT system was adopted by the U.S. Air Force in 1970 and by the Commission of the European 
+Communities in 1976~\citep[chap. 12.1]{hutchins1986machine}.
+
+Research and commercial development in Machine Translation continued in the paradigm of Rule-Based Machine 
+Translation (\GLS{RBMT}), in which a dictionary, a set of grammatical rules, and varying degrees of 
+linguistic annotation are used to produce a translation, until the early 1990s, when a group of IBM 
+researchers developed the first ``Statistical Machine Translation'' system, 
+Candide~\citep{berger1994candide}. Building on earlier successes in Automatic Speech Recognition, which 
+applied Shannon's Information Theory, the group used the availability of a bilingual corpus -- the 
+Canadian Hansard -- to apply similar techniques to the task of French-English translation. 
+
+In place of dictionaries and rules, statistical MT uses word alignments learned from a 
+corpus~\citep{brown1993}: given a set of sentences that are translations of each other, translations 
+of words are learned based on their co-occurrence (the \textit{translation model}); of the possible 
+translations, the most likely is chosen, based on context (the \textit{language model}).
+
+``Phrase-based MT''~\citep{koehn2003} is an extension of statistical MT that extends word-based 
+translation to ``phrases''\footnote{That is: contiguous chunks of collocated words, rather than a 
+``phrase'' in the linguistic sense.}, which better capture differences between languages. Although 
+attempts have been made to include linguistic information~\citep[e.g.][]{koehn2007}, phrase-based MT 
+was, until quite recently, the dominant paradigm in Machine Translation, and is still in wide use in 
+industry. 
+
+Google started providing an online translation service in 2006, initially using SYSTRAN's rule-based 
+system, but switched to a proprietary phrase-based system in 2007~\citep{tyson2012}. More recently,
+Google has started to make advances in Neural MT~\citep{wu2016gnmt}, which it has begun to use in
+production\footnote{\href{https://www.blog.google/products/translate/found-translation-more-accurate-fluent-sentences-google-translate/}{https://www.blog.google/products/translate/found-translation-more-accurate-fluent-sentences-google-translate/}}.
+
+\section{Apertium}
+\label{sect:bgapertium}
+
+Apertium is a shallow-transfer rule-based open source Machine Translation platform~\citep{forcada11a}.
+Originally designed for the romance languages of Spain, it has been extended to
+support more divergent language pairs, such as Basque to English~\citep{oregan13peeking}.
+
+Finite-state transducers are employed in almost all components of the system, with data specified in XML-based 
+formats~\citep{apertium}, with most compiled to efficient binary representations using an algorithm for fast 
+construction of transducers~\citep{rojas2005}. A \textit{left to right, longest match} strategy is employed 
+by the morphological analyser -- using ``tokenize-as-you-analyse''~\citet{garrido-alenda02}\footnote{\citet[Ch. 3]{apertium} provide a textual 
+description of the algorithm, as adapted to Apertium}, based on the contents of the dictionary -- and by the chunker. 
+
+Apertium is designed to function as a set of Unix pipeline components: the system is composed of modular
+programs, each accepting input and generating output using variants of the same ``text stream'' 
+format~(see \ref{ssect:textstream}), where the variant depends on the purpose of the tool. Additional
+components can be added to the system, depending on the needs of the language pair: for example, in the
+very closely related language pair Spanish--Catalan, only a single lexical transfer component is
+employed, while in the English--Spanish language pair, three stages of transfer are employed. External
+components can be added to the pipeline, provided that they can parse the text stream format: for example,
+a number of language pairs employ the external Constraint Grammar system for disambiguation.
+
+A typical Apertium pipeline contains the following components:
+
+\begin{itemize}
+\item A \textit{deformatter}, to separate a documents markup (e.g., HTML or Microsoft Word's DocX) from 
+the text itself
+\item A \textit{morphological analyser}, which both lemmatises the surface forms of the words, which attaching 
+a set of attributes to denote syntactic information, such as gender, case, and number
+\item A \textit{part-of-speech tagger} (\GLS{POS} tagger), typically using hidden Markov models (\GLS{HMM}), 
+which disambiguates the possible morphological analyses based on context, and ensuring only one analysis is selected
+\item A \textit{pre-transfer component}, which splits fused words into their individual lemmata (based on the 
+form selected by the POS tagger)
+\item A \textit{structural transfer component}, which, depending on the configuration, may also perform lexical 
+transfer. The structural transfer component is the only transfer component in simpler language pairs, or, in more 
+complex language pairs, acts as a ``chunker'' (see~\ref{ssect:apertiumchunk}), generating zero or more target 
+language output chunks based on fixed patterns of input from the source language. In either case, it may perform 
+local agreement and reordering operations, and can insert or delete words based on context.
+\item An \textit{interchunk component}, which, in the chunking configuration, performs broader reordering and 
+agreement operations. The chunk itself resembles the token received by the structural transfer component as input, 
+and can have its own lemma and tags, typically set from its content, with the additional of an immutable content 
+part, which contains the words associated with the chunk.
+\item A \textit{postchunk component}, which extracts the words from a chunk, applying further agreement operations 
+on the basis of the words within the chunk, as well as the tags of the chunk itself.
+\item A \textit{morphological generator}, typically created from the same source as the morphological analyser, which 
+outputs the surface form on the basis of lemma and tags.
+\item An \textit{orthographical correction component}, which performs context-sensitive orthographical operations on 
+the output of the morphological generator, such as contractions. 
+\end{itemize}
+
+\subsection{Chunking in Apertium}
+\label{ssect:apertiumchunk}
+
+Structural transfer in Apertium is based on fixed-length patterns. As these
+patterns typically correspond to linguistic chunks, and because in its 
+multi-stage configuration, the lexical transfer component groups its output
+into chunks, this process is referred to as chunking; it is not, however,
+the same process as is typically intended in natural language processing, where
+chunking is a part of the analysis process. In Apertium, chunking is 
+translation-driven, and the ``chunks'' it processes do not always have a
+one-to-one correspondence with the chunks of a single-language analysis.
+
+One common pattern that frequently occurs among European languages where the
+chunking boundaries are blurred (for the purpose of translation) is where verbs
+and pronouns collocate. For example: although French is, like English, an SVO
+language, in sentences containing personal pronouns as the object, it adopts
+an SOV configuration. Similarly, between Irish and English there is a need to
+consider object pronouns together with the verb when translating the English
+continuous tenses: ``doing it'' ought not to be translated as ``ag d\'eanamh \'e'',
+but rather as ``\'a dh\'eanamh''; that is, the two English chunks need to be
+merged into a single Irish chunk (and vice-versa in the other translation
+direction).
+
+This consideration of target language aside, as chunking is performed by the
+structural transfer component, it takes care of local agreements and reordering.
+As later processing stages which move chunks are based around this initial
+structural transfer component, they inherit from it a structure based on the
+morphologically analysed tokens that the initial transfer component receives;
+that is, the chunks it outputs are not only assigned chunk tags to reflect
+the type of phrase contained within the chunk, but are assigned a chunk ``lemma'',
+which more accurately describes its contents, as well as any tags that are
+deemed relevant. So, in a chunk containing a noun phrase, the contents of the
+tags of the noun that describe its gender and number can be propagated to the
+chunk, which the later stages can propagate to other chunks, to ensure, for 
+example, that the verb agrees with its subject. The tags assigned to words within the chunk can
+be replaced with a pointer to the chunk's own tags, meaning that changes to
+those chunks are passed to those words immediately.
+
+A final phase, post-chunk, removes the chunking markers, outputting the words within. Tags
+that are linked to those of the chunk are replaced with its values, and further
+processing can be performed.
+
+
+\subsection{Apertium's text stream}
+\label{ssect:textstream}
+
+The various components of Apertium operate on two fundamental types of input:
+tokens, and blanks. The first component of the Apertium pipeline serves to
+normalise formatting details, by encapsulating them in so-called ``superblanks'':
+that is, the formatting information is enclosed within square brackets, whose 
+contents are treated by later components as though they were simple spaces.
+
+As an example, the HTML fragment \texttt{the <b>third</b> man}, where ``third''
+has been marked up with the HTML \texttt{<b>} element, to cause the text to
+be rendered in boldface, would be ``deformatted'' by Apertium's HTML component
+as \texttt{the[ <b>]third[<\/b> ]man}.
+
+Tokens, the other fundamental type, can differ depending on the stage of pipeline.
+The common elements of each type of token are the token boundary characters:~\texttt{\^{}}
+to mark the start of the token, and \texttt{\$} to mark its end; \texttt{/} is used as a
+separator in the event of multiple possibilities, \texttt{+} to mark a word internal split,
+and \texttt{<} and \texttt{>} are used to enclose individual tags. \texttt{\#} is used
+to mark an invariant ``queue'' of items in a multiword such as ``passer by'' where
+``passer'' inflects, but ``by'' does not.
+
+The output of morphological analysis is a token that consists of the surface form, followed
+by a set of possible analyses. The output of Apertium's morphological analyser for the 
+ambiguous English word ``open'' is \\ \texttt{\^{}open/open<adj>/open<vblex><inf>/open<vblex><pres>\$}:
+the surface form ``open'' is followed by three analyses: adjective, infinitive, and present tense.
+The Spanish contraction ``del'' is analysed as \texttt{\^{}del/de<pr>+el<det><def><m><sg>\$}, where
+the preposition ``de'' is cut from the definite article ``el'', and the multiword ``speed of light''
+is analysed as \texttt{\^{}speed of light/speed<n><sg>\# of light\$}, where the inflecting noun
+``speed'' is followed by the invariant ``of light''\footnote{There are various speeds of light,
+depending on the medium through which it passes; the one we  most frequently hear about is the speed 
+of light in a vacuum.}
+
+Apertium's tagger discards the surface form, and selects the single most likely candidate word,
+based on the context of the previous word. For example, if, in the first example, the adjective
+``open'' had been selected as the most likely, the output would look like \texttt{\^{}open<adj>\$}.
+This form of token is both the input to the structural transfer module, as well as its output,
+when not run as a chunker. When run as a chunker, the output of the fragment ``big dog''
+\texttt{\^{}Nom\_adj<SN><UNDET><GD><sg>\{\^{}perro<n><3><4>\$ \^{}grande<adj><mf><4>\$\}\$}
+
+
+\section{Statistical Machine Translation}
+\label{sect:bgsmt}
+
+\subsection{Overview}
+
+At their most basic, Statistical Machine Translation systems use a pair of probabilities: the probabilty of the translation
+of a word, given the source word, and the probability of the translation in context. The probabilities of the
+translations are learned from a corpus of bilingual sentence pairs, in a process that's usually likened
+to using a menu from a Chinese restaurant to find the Chinese character for some item, such as soup.
+Figure~\ref{fig:chinesemenu} shows a sample from a Chinese menu. The only word common to the English items
+is ``soup'', while the only character common to all three Chinese entries is ``汤'', making it the most
+probably translation of ``soup''. Similarly, ``鱼'' appears twice, with ``carp soup'', and ``fish head soup'';
+although ``fish'' is absent from ``carp soup'', if one knows that carp is a type of fish, then one can conclude
+that this character means ``fish''.
+
+With a larger corpus of menu items, it might be possible to determine that in addition to ``soup'', the character
+``汤'' also collocates with ``tea'', giving us two possible translations. The language model is used to select
+the most likely of these in context: ``fish soup'' is a fair more likely word pairing in English than ``fish tea'',
+while ``green tea'' is similarly far more likely than ``green soup''.
+
+\begin{figure*}
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+Chinese & English \\
+\hline
+乌鸡\textbf{汤} & Black Chicken \textbf{Soup} \\
+鲫鱼\textbf{汤} & Carp \textbf{Soup} \\
+鱼头\textbf{汤} & Fish Head \textbf{Soup} \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Chinese menu excerpt}
+\label{fig:chinesemenu}
+\end{figure*}
+
+
+Rather than individual words, most SMT systems use ``phrases'', or, rather, n-grams, as the basic unit
+of translation. An n-gram is a contiguous group of tokens--typically words, though punctuation 
+and other such items may be considered--of size \textit{n}: a \textit{unigram} is a single token,
+a \textit{bigram} is two, and a \textit{trigram} is three. Numbers higher than three are typically
+referred to by number: \textit{4-gram}, \textit{5-gram}, etc. Returning to the menu example, simply
+assuming a one-to-one, left-to-right correspondence between Chinese characters and English words
+would be sufficient for the first and third examples, but it can be assumed that both Chinese 
+characters ``鲫鱼'' are required to translate ``carp''\footnote{It seems to mean ``crucian carp'' specifically.}.
+ 
+In its broadest sense, a language model can be any model of a language.
+For example, a simple list of individual words, such as those used as a source of correct spellings
+by a spell checker, can be considered a language model. In Statistical Machine Translation (as well as ASR), the term
+\textit{language model} more typically refers to an n-gram language model, with corpus-derived 
+probabilities for each n-gram. For such a language model of size \textit{n}, the model will contain
+all sizes of n-gram from 1 to \textit{n}.
+ 
+N-grams, in the form of lexical bundles~\citep{biber2004bundlers}, have shown increasing use in Linguistics; in
+Applied Linguistics in particular. For example, a former colleague's dissertation, in contrasting the academic
+writings of native speakers with those of Polish native speakers, found that while, as expected, there was
+a significantly higher reliance on formulaic language; however, when the most frequently used bundle (``on the other hand'')
+was excluded, the non-natives showed significantly less use of bundles, indicating that English language learners
+could better served by an increased focus on formulaic language~\citep{kozicka2016dissertation}.
+
+The essential property of n-grams as a unit is that they overlap: the probability of a whole sentence can be
+estimated using just a small window of n-grams. This property is used within n-gram language models to
+allow rare n-grams to be estimated using ``backoff'': if, in a trigram model, there is no evidence of a
+particular trigram, the probability can be estimated by using the probabilities of the two bigrams it is
+composed of.
+
+
+The development of the first Statistical Machine Translation, CANDIDE~\citep{berger1994candide}, 
+has its roots in earlier developments at IBM in Automatic Speech Recognition (\GLS{ASR})~\citep{Jelinek2009dawn}.
+In statistical ASR, the probability of a sentence $w$ is given in terms of its utterances, $U$, as 
+in~\ref{eqn:asr1}~~\citep[p. 538, (3)]{jelinek1976asr}.
+
+\begin{equation}
+\label{eqn:asr1}
+P\{w|U\}=P\{U|w\}P\{w\}/P\{U\}
+\end{equation}
+
+This equation, when stripped of the independent $P\{U\}$, as reframed in terms of $A$, the acoustic
+signal, rather than utterances, is given in~\ref{eqn:asr2}~\citep[p. 487]{Jelinek2009dawn}, where
+$\hat{P}(A|W)$, the probability of word $W$ resulting from the acoustic signal $A$, is called the
+\textbf{acoustic model}, and $\hat{P}(W)$, the probability of word $W$, is called the \textbf{language model}.
+The combination of both is known as the \textbf{noisy channel model}~\citep[pp. 95--96]{koehn2010statistical},
+originally proposed in work on error-correcting codes.~\citep{6773024}.
+
+\begin{equation}
+\label{eqn:asr2}
+\mathbf{\hat{W}} = \mathrm{arg} \underset{\mathbf{W} \in \mathcal{S}}{\mathrm{max}} \Pr{(\mathbf{W}|\mathbf{A})} =  \mathrm{arg} \underset{\mathbf{W} \in \mathcal{S}}{\mathrm{max}} \Pr{(\mathbf{A}|\mathbf{W})} \Pr{(\mathbf{W})}
+\end{equation}
+
+Following the success of the statistical approach to ASR, the team at IBM applied their methods to Machine 
+Translation, using a similar formula: \ref{eqn:smt1}~\citep[p. 492]{Jelinek2009dawn}, where \textit{E} means English, and \textit{F} French;
+this pair was chosen because of the similarity of the languages, and because of the availability of a parallel corpus,
+the Canadian Hansard~\citep[p. 493]{Jelinek2009dawn}.
+
+\begin{equation}
+\label{eqn:smt1}
+\mathbf{\hat{E}} = \mathrm{arg} \underset{E}{\mathrm{max}} \Pr{(\mathbf{F}|\mathbf{E})} \Pr{(\mathbf{E})}
+\end{equation}
+
+The translation model is obtained from a corpus through a process called \textit{word alignment}~\citep{brown1993}, 
+using the Expectation Maximisation algorithm: first, the model is initialised, often using uniform distributions;
+second, the expectation step, the model is applied to the data; third, the maximisation step, the model is learned
+from the data; and fourth, steps two and three are repeated until convergence. \citet{brown1993} describe a series
+of five translation models, where, aside from the first, which is initialised uniformly, the first step of the EM
+algorithm is performed using the output of the previous model. Although these models take into consideration a
+possible ``null'' alignment, where a word is inserted or deleted, they cannot generate many-to-many 
+alignments~\citep[p. 116]{koehn2010statistical}. To overcome this, alignments are computed in both directions, and
+merged by ``symmetrisation of alignments''~\citep{och2004alignment}.
+
+Phrase-based SMT extends word alignment to ``phrases'', or, rather, n-grams, by extracting heuristically minimal n-gram 
+pairs, based on a word alignment~\citep{och2004alignment}. The phrases are generalised using bilingual word 
+classes~\citep{och1999wordclass} to form ``alignment templates''~\citep{och2004alignment}, which allow a greater
+amount of phrases to be extracted from the corpus, providing more context than could be learned using word
+alignment alone.
+
+Factored translation models~\citep{koehn2007} extend the phrase-based model with additional annotation -- typically, 
+linguistic annotation, such as part-of-speech tags or lemma -- as a means of better generalising the translation by
+adding the sort of information that allows knowledge-driven approaches to degrade better than other data-driven
+approaches. Despite the positive results reported on factored models, however, what little gain there may be is
+typically outweighed by the extra data required -- one extra factor effectively doubles the data used; a second, 
+triples it -- and the slowdown of the translation process this entails. Additionally, it has been shown that
+in contrast with the use of factors in neural machine translation, factors in phrase based SMT generalise poorly, as
+``the individual models either treat each feature combination
+as an atomic unit, resulting in data sparsity, or assume 
+independence between features, for instance
+by having separate language models for words and
+POS tags''~\cite[p. 89]{sennrich-haddow:2016:WMT}.
+
+\citet{Chiang:2005:HPM:1219840.1219873} extended the phrase-based model to ``hierarchical phrases'', learning a
+synchronous context-free grammar from bilingual texts -- in effect, learning something equivalent to a pair
+of constituent parsers, but without syntactic constituent labels, to allow the use of embedded phrases in 
+phrase-based SMT~\citep[e.g.,][]{Zollmann:2006:SAM:1654650.1654671}, which have been shown to be of particular
+benefit to language pairs where a lot of reordering is required~\citep{Zollmann:2008:SCP:1599081.1599225}.
+
+The influence of ASR on Statistical Machine Translation did not end with CANDIDE; following work on combining
+all of the components of an ASR system as a single weighted finite state transducer~\citep{MOHRI200269}, which
+quickly became the default paradigm, thanks to toolkits such as Kaldi~\citep{Povey_ASRU2011_2011}, work 
+soon appeared on applying similar techniques to phrase-based SMT~\citep{Iglesias:2009:HPT:1620754.1620817},
+followed, thanks to the application of pushdown transducers~\citep{Allauzen:2012:PTE:2402069.2402077} (an 
+extension of automata that adds a stack, extending their expressivity to Context-Free Grammars), by 
+hierarchical SMT~\citep{Iglesias:2011:HPT:2145432.2145577}.
+
+\section{Hybrid Machine Translation}
+
+There are a number of methods that have been used to try to combine the best of two or more approaches to
+Machine Translation. One of the more common methods is the ``multi engine'' approach, where the outputs
+of two or more systems are combined to yield a better translation~\citep{Heafield-wmt10,Hogan:1998:EMM:648179.749224,eisele2008hybridmemt},
+using statistical methods to combine the output.
+
+Another method is to use statistical methods to generate rules~\citep{dugast2009selective} and/or lexica~\citep{Surcin_2007.rapid} for knowledge-driven systems.
+For Apertium specifically, there are a number of open source tools available that perform this task of 
+inducing rules from a parallel corpus, using methods employed by phrase-based SMT~\citep{sanchez06a,sanchez-cartagena16b},
+as well as a tool that can extract lexical data~\citep{Caseli2006}.
+
+The opposite method is also used, to enhance phrase-based systems with the output of RBMT systems; \citet{sanchez-cartagena12a}
+provide an open source toolkit to augment the Moses SMT toolkit~\citep{Koehn:2007:MOS:1557769.1557821} with phrases generated
+using Apertium. This approach has been taken to its extreme by using an SMT system to try to relearn an RBMT system~\citep{Dugast:2008:WRR:1626394.1626421}.
+
+A final commonly used method of hybridisation is the use of SMT as a postcorrection system for the output of
+an RBMT system: instead of directly aligning the source and target languages, the source language is first
+translated using the RBMT system, with its output used as the source language to the SMT system, to learn
+a set of corrections~\citep{dugast-senellart-koehn:2007:WMT}. Similarly, the opposite has also been attempted,
+using an RBMT system for long-distance reordering and grammatical generation of SMT-generated input~\citep{ahsan2010coupling}.
+
+\section{Neural Machine Translation}
+
+The earliest neural network, the McCulloch-Pitt Neuron~\citep{McCulloch1988}, was modeled on brain function.
+It used a linear classification model, with weights that could be set by its operator. The 
+perceptron~\citep{Rosenblatt58theperceptron} was the first model that could
+learn weights given examples of inputs~\citep[p. 15]{goodfellow2016dl}.
+
+Neural networks have come in and out of fashion several times since the 1950s, with the most recent
+return to fashion, in the guise of ``deep learning'', made possible by a number of factors, in 
+particular the availability of methods to train networks with multiple layers, and access to high-powered
+computing, thanks to Graphics Processing Units (\GLS{GPU}), which (as the name suggests) were originally
+designed for accelerating graphical operations, such as those used in computer games, but thanks to their
+number-crunching power, have been adapted to other tasks.
+
+The first headline-grabbing success story of this current resurgence of neural networks was in the area
+of computer vision, when a neural network based object detection system, trained using GPUs, significantly
+outperformed the previous state of the art~\citep{NIPS2012_4824}.
+
+In the area of Natural Language Processing, one of the first areas where neural networks had a big impact
+was in language modeling~\citep{mikolov2012phd}, thanks, in part, to the broad availability of an open source
+implementation. The headline-grabber in NLP, however, was word2vec~\citep{DBLP:journals/corr/abs-1301-3781}.
+
+Although itself based on a relatively shallow, 2 layer neural network, the word2vec method of creating word
+embeddings provides a distributed representation of words suitable for use in deeper neural architectures. Designed for the task of finding analogies among
+words, the vector space positions occupied the word vectors are organised so that common contexts are close
+in proximity. Given a seed lexicon of bilingual mappings, this has been used across languages to find
+translations based on cross lingual projection of these shared contexts~\citep{44931}.
+
+A recurrent neural network is a type of neural network that operates on a sequence: at each time state $t$,
+of sequence $x = (x_1, \ldots x_t)$, the hidden state $h_t = f(W_{h}h_{t - 1} + W_{x}x_{t})$; it is calculated on the basis of the previous time step $h_{t - 1}$ multiplied by its weight matrix, $W_h$, added to the input at the same time step, $x_t$, multiplied by the weight matrix $W_x$. The output $o_t$ is calculated as $o_t = softmax(W_{o}h_t)$. The weight matrices are shared, so the same calculations are performed at each time step, but with different inputs.
+
+Recurrent neural networks have limits to what they can remember; variants such as Long Short-Term Memory (LSTM)~\citep{Hochreiter:1997:LSM:1246443.1246450} and Gated Recurrent Unit (GRU)~\citep{cho2014rnnencdec} add gate mechanisms that are used to decide what to remember and what to forget. 
+
+\citet{cho2014rnnencdec} use a pair of recurrent neural networks for Neural Machine Translation. One, the encoder, transforms the input to a fixed size vector from the target language, while the other, the decoder, generates the output from this vector; the encoder and decoder are jointly trained to maximise the probability of the output given the source.

@@ -497,6 +497,11 @@ this dissertation on request.
 \@author{}\\
 \@date{}\\
 \end{flushright}
+
+\vspace{30mm}
+
+Wordcount: 14972
+
 \vfill
 \fi}
 \fi

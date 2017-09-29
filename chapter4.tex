@@ -1,0 +1,72 @@
+\chapter{Comparison and Evaluation}
+\label{chap:compare}
+\epigraph{\textit{\small{The thing I don't like about tomato sauce is the tomatoes}}}{``Oliwka N.''}
+
+The original intention of this section was to compare the performance of the Apertium-based system
+with an SMT system; however, as the rule conversion remains incomplete, no comparison is possible.
+
+Despite the development of a tool for corpus cleaning, there was little in the two problematic
+corpora that could be targetted; to check what effect, if any, cleaning the corpus would have,
+I used the script distributed with Moses that removes sentence pairs whose relative length
+differs by a ratio of 9:1 or more.
+
+Secondly, to compare the effect of proper lower casing, I compared the cleaned corpus when lowercased
+using the default method, and with the method for Irish. The results of the three phrase-based systems
+and the Neural MT system are presented in figure~\ref{fig:tokcleancompare}.
+
+For comparison, the results on the various subcorpora listed in the previous chapter are reproduced
+from \citet[p. 569]{ARCAN16.9} in figure~\ref{fig:iriseval}.
+
+\begin{figure*}
+\begin{center}
+\begin{tabular}{|l|l|r|r|r|}
+\hline
+ &  & \multicolumn{3}{|c|}{English to Irish} \\
+\hline
+\# & Corpus & BLEU & METEOR & chrF \\
+\hline
+0 & DGT* & 32.39 & 28.45 & 56.75 \\
+1 & +EU Bookshop* & 54.54 & 39.03 & 67.82 \\
+2 & +EU constitution* & 53.97 & 38.63 & 67.21 \\
+3 & +Focal & 54.82 & 39.30 & 68.59 \\
+4 & +GNOME* & 55.62 & 40.11 & 68.76 \\
+5 & +Irish legislation & 55.77 & 40.01 & 68.62 \\
+6 & +KDE4* & 56.62 & 40.73 & 69.36 \\
+7 & +News-2007 (mono. English) & / & / & / \\
+8 & +Ubuntu & 54.67 & 39.60 & 68.06 \\
+9 & +Wikipedia Titles & 55.44 & 39.99 & 68.10 \\
+10 & +Irish sent. bank & 55.76 & 40.23 & 68.35 \\
+11 & +Food and Beverages & 54.83 & 39.57 & 67.41 \\
+12 & +Wikipedia (mono. Irish) & 54.47 & 39.34 & 66.88 \\
+13 & +Textbooks & 55.84 & 40.28 & 68.61 \\
+14 & +Apertium & 54.85 & 39.66 & 67.75 \\
+\hline
+ & Google Translate & 40.07 & 33.23 & 65.93 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Summary of automatic evaluation of available corpora for English and Irish, reproduced from \protect\citet[p. 569]{ARCAN16.9}.
+Evaluation data was extracted from the corpora marked with `*'.}
+\label{fig:iriseval}
+\end{figure*}
+
+\begin{figure*}
+\begin{center}
+\begin{tabular}{|l|l|r|r|r|}
+\hline
+\multicolumn{5}{|c|}{English to Irish} \\
+\hline
+Clean & Lowercasing    & BLEU  & METEOR & chrF \\
+\hline
+No    & Moses          & 31.01 & 27.83  & 68.04 \\
+Yes   & Moses          & 30.20 & 27.47  & 67.29 \\
+Yes   & Irish specific & 30.27 & 27.73  & 67.66 \\
+\hline
+Yes   & Irish specific & 02.02 & 04.34  & 17.04 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Comparison of phrase based model trained on an unclean corpus, lowercased using Moses' default; cleaned and default; cleaned and Irish specific; and OpenNMT.}
+\label{fig:tokcleancompare}
+\end{figure*}
+

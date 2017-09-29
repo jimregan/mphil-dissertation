@@ -1,0 +1,30 @@
+\chapter{Discussion}
+\label{chap:discuss}
+\epigraph{\textit{\small{I feel so lost when I don't know what I should be complaining about}}}{``Oliwka N.''}
+
+Although using the set of test sentences from \citet{ARCAN16.9} originally seemed a good idea, as it
+is a publicly available test set, from a paper with extremely well described data sources, it was, in
+hindsight, a poor decision: the test set was made available, but the tokenisation method was not; the
+data sources were well described, but the methods employed in processing that data were not. Consequently,
+the comparison is somewhat meaningless. Another problem is that the corpora used as sources of the test
+data include the two with the worst data quality issues, EU Bookshop and KDE4.
+
+It is perhaps not surprising, then, that contrary to expectations, there is a slight decrease in the evaluation
+scores on the SMT systems that were cleaned, and that were lower cased using a method more suitable for Irish --
+the test sentences did not undergo such cleaning, and were lower cased using the standard, unsuitable method.
+
+The most disappointing result was that of the Neural MT system. On inspection, much of the output is severely truncated,
+with many sentences containing a single character of output, with 621 of the sentences (out of 2000) containing fewer 
+than 10 characters (compared with 108 in the reference translation). This may be due to the problem of 
+under-translation~\citep{Tu:2016:ACL}. Due to my occasional involvement in the Tesseract OCR 
+project~\footnote{\href{https://github.com/tesseract-ocr/tesseract}{https://github.com/tesseract-ocr/tesseract}}, which recently
+adopted a neural based system, I had been aware that people had encountered problems with words, lines, or whole
+pages going unrecognised. To test this for myself, I trained a model for Irish \textit{seanchl\'o}, or insular 
+script\footnote{The trained model is available from \href{https://github.com/jimregan/tesseract-gle-uncial/releases}{https://github.com/jimregan/tesseract-gle-uncial/releases}},
+and observed that there were missing words in each of the handful of test pages I tried, although nowhere near to
+the same extent as with Neural MT.
+
+Another disappointment is the failure of the factored model: although a factored model was trained, any attempt to
+run a translation using it lead to a segmentation fault. The most commonly cited cause of such problems is unescaped
+characters in the corpus, although I found nothing of the kind, and if that were the problem, I would expect the 
+regular phrase-based models trained on the same corpora to exhibit the same problem.

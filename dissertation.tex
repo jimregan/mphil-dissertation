@@ -1,0 +1,322 @@
+%%%%%
+%%
+%% Sample document ``thesis.tex''
+%%
+%% Version: v0.2
+%% Authors: Jean Martina, Rok Strnisa, Matej Urbas
+%% Date: 30/07/2008
+%%
+%% Copyright (c) 2008-2011, Rok Strniša, Jean Martina, Matej Urbas
+%% License: Simplified BSD License
+%% License file: ./License
+%% Original License URL: http://www.freebsd.org/copyright/freebsd-license.html
+%%%%%
+
+% Available documentclass options:
+%
+%   <all `report` document class options, e.g.: `a5paper`>
+%   withindex   - enables the index. New index entries can be added through `\index{my entry}`
+%   glossary    - enables the glossary.
+%   techreport  - typesets the thesis in the technical report format.
+%   firstyr     - formats the document as a first-year report.
+%   times       - uses the `Times` font.
+%   backrefs    - add back references in the Bibliography section
+%
+% For more info see `README.md`
+\documentclass[withindex,glossary,times]{tcd-dissertation}
+
+% Citations using numbers
+\usepackage[natbibapa]{apacite}
+\bibliographystyle{apacite}
+\usepackage{fontspec}
+\usepackage{epigraph}
+\usepackage{xeCJK}
+%\setCJKmainfont{SimSun}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Thesis meta-information
+%%
+
+%% The title of the thesis:
+\title{English-Irish Machine Translation}
+
+%% The full name of the author (e.g.: James Smith):
+\author{Jim O'Regan}
+
+\degreetitle{M.Phil in Speech and Language Processing}
+\degreeyear{2017}
+
+\supervisor{Dr. Elaine U\'i Dhonnchadha}
+
+%% Submission date [optional]:
+% \submissiondate{November, 2042}
+
+%% You can redefine the submission notice [optional]:
+% \submissionnotice{A badass thesis submitted on time for the Degree of PhD}
+
+%% Declaration date:
+\date{September, 2017}
+
+%% PDF meta-info:
+\subjectline{Irish-English MT}
+\keywords{MT, Irish, English}
+
+\foreword{%
+This dissertation was supported by funding from The Department of Arts, Heritage, 
+Regional, Rural and Gaeltacht Affairs (now The Department of Culture, Heritage and the 
+Gaeltacht).
+
+Chapter 2 incorporates text from my contribution to the article ``\guillemotleft All 
+Your Data Are Belong to us\guillemotright . European Perspectives on Privacy Issues in 
+`Free' Online Machine Translation Services''~\citep{kamocki2015all}, which was carried
+out during the period of registration and integrated into the body of the dissertation,
+according to the guidelines issued by the Office of the Dean of Graduate Studies,
+February 2017, and as discussed with my supervisor.
+
+As this work was created using public funding, and in the interest of openness, I
+release this work under the terms of the Creative Commons Attribution 4.0 International 
+(CC BY 4.0) licence. As the copyright holder, this notice supercedes any conflicting
+notice that may subsequently be put in place by the library of Trinity College, Dublin.
+Where such a conflict might occur, the reader is authorised to choose the least 
+restrictive of the two.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Abstract:
+%%
+\abstract{%
+This dissertation documents the development of a Rule-Based Machine Translation
+system for English to Irish, describing the conversion of a pair of dictionaries
+for use as a bilingual lexicon, and the conversion of an existing morphological
+analyser for analysis and generation.
+
+It describes a tool created for creating translation rules, based on the alignment
+templates used in Statistical Machine Translation. The tool is only partially
+complete, as it was intended to also allow the specification of rules with
+partial recursion, to reduce the amount of rules that required to be written.
+Due to the demands of the English-Irish language pair, rules of a single element
+are in the minority; poor foresight on the authors part, along with the complexity
+of transforming multiple rule pieces that must remain together, have resulted in
+the partial completion of this tool. Consequently, the rules for the English-Irish
+pair which were to be described here are not discussed, pending manual expansion
+from the form they were written in, which expected this recursive expansion. 
+
+An intended comparison with Statistical Machine Translation and Neural Machine 
+Translation was additionally hampered by the poor quality of much of the
+available parallel text. This has resulted in the creation of a proof of concept
+tool for corpus cleaning, described within.
+}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Glossary [optional]:
+%%
+\newglossaryentry{MT}{
+    name=MT,
+    description={Machine Translation}
+}
+\newglossaryentry{EBMT}{
+    name=EBMT,
+    description={Example-Based Machine Translation}
+}
+\newglossaryentry{NMT}{
+    name=NMT,
+    description={Neural Machine Translation}
+}
+\newglossaryentry{RBMT}{
+    name=RBMT,
+    description={Rule-Based Machine Translation}
+}
+\newglossaryentry{SMT}{
+    name=SMT,
+    description={Statistical Machine Translation}
+}
+\newglossaryentry{HMM}{
+    name=HMM,
+    description={Hidden Markov Model}
+}
+\newglossaryentry{ANN}{
+    name=ANN,
+    description={Artificial Neural Network}
+}
+\newglossaryentry{POS}{
+    name=POS,
+    description={Part of Speech}
+}
+\newglossaryentry{FST}{
+    name=FST,
+    description={Finite State Transducer}
+}
+\newglossaryentry{WFST}{
+    name=WFST,
+    description={Weighted Finite State Transducer}
+}
+\newglossaryentry{GPU}{
+    name=GPU,
+    description={Graphics processing unit}
+}
+\newglossaryentry{TM}{
+    name=TM,
+    description={Translation Memory}
+}
+\newglossaryentry{SRX}{
+    name=SRX,
+    description={Segmentation Rule eXchange}
+}
+\newglossaryentry{OCR}{
+    name=OCR,
+    description={Optical Character Recognition}
+}
+\newglossaryentry{ASR}{
+    name=ASR,
+    description={Automatic Speech Recognition}
+}
+\newglossaryentry{RNN}{
+    name=RNN,
+    description={Recurrent Neural Network}
+}
+\newglossaryentry{LSTM}{
+    name=LSTM,
+    description={Long Short-Term Memory}
+}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Contents:
+%%
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Acknowledgements:
+%%
+\acknowledgements{%
+To my supervisor, Elaine U\'i Dhonnchadha: I know the risk to your reputation
+that you took when you accepted me into this programme, and internship, and
+that the results documented here cannot vindicate that decision is a bitter,
+crushing disappointment. I hope to rectify this as soon as possible. 
+
+To the other members of the 
+academic panel: Breffni O'Rourke, Carl Vogel, Christer Gobl, and Ailbhe 
+N\'i Chasaide, I am grateful for your roles in making this possible,
+and to Kevin Scannell, Piotr Ba\'nski, and Mikel L. Forcada, I am grateful
+for the letters of recommendation, and the untiring work each of you do
+for the advancement of open source in language technology and resources.
+
+I gratefully acknowledge the support I've received from the Department of 
+Culture, Heritage and the Gaeltacht, and thank the Department for it;
+without which this work would not have been possible. In particular, 
+I'd like to thank Aodh\'an Mac Cormaic: I could not imagine a better
+representative for the Department.
+
+To my parents, Joe and Julie: thank you for making me what I am, and for your
+support, even at the most trying of times. I couldn't have asked for better
+parents.
+
+To my son Mark: you have been my reason to keep going, even when times were
+hardest.
+
+To my siblings: Joe, Paul, Angela, Anne Marie, and Catherine: thanks for 
+being you. To Joe in particular, thank you for the use of your computer,
+without which I could not have completed much of the work I've written about
+here. To Anne Marie, as well as my friends James Doyle and Peiyao Li, thank
+you for listening to my whining when things were yoyoing out of control.
+
+A debt of gratitude is owed to Joanna Kozicka, for the continuous reminders
+that there is a life on the other side of this process. A serious thank
+you for sharing your stories -- listening to them is the only thing that
+kept me from going completely insane.
+
+The Phonetics and Speech Lab in Trinity has been like a second home for the
+past two years, and its other occupants a second family. To M\'iche\'al \'O 
+Meachair, Emily Barnes, Fionnuala Nic Ph\'aid\'in, Christoph Wendler, and
+Neasa N\'i Chiar\'ain, thank you for your immense help in understanding the
+often vague, and frequently underdocumented, aspects of Irish grammar.
+Eoghan O'Connor, Andy Murphy, and Maria O'Reilly, thanks for the crosswords.
+Jenny O'Reilly, thank you for saving me -- you know how, but it's probably
+best not to put it in writing! To Antoin Rodgers (and Eoghan, and James), 
+thank you for saving me from so many nights where I could easily have ended
+up sleeping rough or roaming the streets. And to all, thanks for the 
+doughnuts, the beer, and the many PhLabby memories. (But also, a special
+``no thank you'' to Emily for the nickname ``Jimmington'', and my sisters
+for adopting it).
+
+To Beata Kozyra: your inspiring me to learn Polish indirectly lead to my
+first steps with Natural Language Processing, and watching you painfully
+and painstakingly translate a manual, word by word, is what directly lead to my
+interest in Machine Translation. Though ours paths may never again cross,
+thank you for leading me to the path I'm now following. To Mariusz Florczak
+and Tomasz Mikulicz, whom I met on that path, thank you for your help and
+your friendship.
+
+Thanks also to my classmates, department colleagues and fellow students over the past two
+years. In particular, to Mari Palacios, Vangelis Dimos, Camilla Elan, 
+Daniela Modrescu, and Anshu Dash: thanks for your encouragement and support.
+
+A special thank you to Mihael Ar\v{c}an, developer of the IRIS system, and
+to Meghan Dowling of Tapad\'oir, for being so keen to share information on
+English-Irish Machine Translation.
+
+To the many members of the various open source projects whose software I have
+used, and to those with whom I've had the pleasure of collaborating, I thank 
+you for your efforts. In particular, the community around Apertium helped
+me to get to this point: a special thank you to Fran Tyers, Gema Ram\'irez-S\'anchez,
+Sergio Ortiz, Jacob Nordfalk, Kevin Unhammer, Mireia Ginest\'i Rosell, and
+Felipe S\'anchez Mart\'inez, as well as to the many students I had the pleasure
+of working with as part of Google's Summer of Code and Code-In programmes. I
+would here also like to thank my friend and co-author, Pawe\l{} Kamocki, whose
+contribution of legal advice does not get quite the amount of recognition it
+deserves.
+
+Finally, to ``Oliwka N.'', who (unwittingly) supplied the epigraphs to my chapters:
+meeting you was the highest point of the last two years. Muchissimo!
+
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Title page, abstract, declaration etc.:
+%% -    the title page (is automatically omitted in the technical report mode).
+\frontmatter{}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Thesis body:
+%%
+\include{chapter1}
+\include{chapter2}
+\include{chapter3}
+\include{chapter4}
+\include{chapter5}
+\include{chapter6}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Bibliography:
+%%
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{refs}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Appendix:
+%%
+
+\appendix
+
+\include{citinf}
+\include{appendixA}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Index:
+%%
+\printthesisindex
+
+\end{document}

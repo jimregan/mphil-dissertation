@@ -1,0 +1,84 @@
+% chap6.tex (Significance and Future Work)
+
+\chapter{Conclusion}
+\label{chap:conclusion}
+\epigraph{\textit{\small{But tomorrow was yesterday and now it's today}}}{``Oliwka N.''}
+
+My aim was to describe the development of an English to Irish rule-based machine translation
+system, describing the conversion of the dictionaries to create its lexicon, the conversion
+of the morphological analyser of Irish to use as its generation lexicon, the creation of a tool
+to more easily write rules for the Apertium platform, and the set of rules used in the English-Irish 
+system. I have only been able to deliver on the first two points, due to an unforeseen complication
+in the creation of the rule conversion tool, and my lack of foresight to allow for such an
+eventuality.
+
+A secondary goal, to compare the RBMT system with a Statistical MT system, cannot then be fulfilled;
+however, the unexpected complication of poor training data has lead to the creation of a
+prototype tool that is already useful for cleaning a small number of problems in parallel corpora.
+
+All software and data created during the course of this dissertation is publicly available, with
+the software all open source\footnote{All software, data, and pretrained models are collected
+here: \href{https://github.com/jimregan/dissertation-support/}{https://github.com/jimregan/dissertation-support/}.}.
+
+\section{Ongoing Work}
+
+Work on rule conversion for Apertium is ongoing -- it was put on hold two days before the final 
+deadline of this dissertation -- consisting of manually expanding the rules. Although it is a matter of
+immense personal disappointment to not have been able to get the rule expander to work, even within
+the extended timeslot afforded by the dissertation extension, it has not been without benefit. The
+rules that deal with the indirect relative, translating ``whose'', were needlessly complicated: as
+currently written, they generate a relative chunk and an NP chunk at chunk time, with an interchunk
+rule that selects the correct form of the possessive determiner ``a'' from the preceding NP; this
+can be written instead as a chunking rule with a single output chunk, tagged as an indirect 
+relative, with the interchunk rule modified to insert the relative chunk. In the same vein, 
+the expansion of regular NP rules means that rules written earlier are updated to
+add macros that perform operations that were not considered earlier.
+
+\section{Future Work}
+
+Reworking the expander to also work for multi-part rules seems a matter of splitting the expansion
+process into separate parts for single- and multi-part rules, though it may be beneficial to
+rewrite the expander in a more imperative style of programming, to have more control over the
+flow of execution.
+
+Despite the poor quality of the bilingual corpora, there is much there that can be used to augment
+the RBMT lexicon and rules. Additionally, there is potential for using WordNet~\citep{oregan2016lemongawn}
+as a source of lexical entries.
+
+The usual approach to augmenting Apertium translators with existing data is incremental, 
+and integrationist, to ensure that to the maximum degree possible that each new item added 
+to the lexicon can be analysed and generated correctly. This is in contrast to the dictionary conversion process
+proscribed here, which was more completionist: as a result, there was little opportunity to 
+ensure the various lexica were consistent with each other. ``The quality of translation is not
+proportional to the completeness of the
+description  in  the  dictionary.  A  larger
+number  of  equivalents  \textit{[\dots]}  often  results  in
+decreasing  rather  \textit{[than]}  increasing  the
+standard of translation''~\citep[p. 104]{jassem04pwn}. Despite the issues of data quality, where
+the SMT data and dictionaries do agree, there is potential to automate the refining of the lexicon,
+to remove some of the less helpful translation equivalents.
+
+
+During the writing phase of this dissertation, a new component was being developed for Apertium
+to handle discontiguous multiword expressions. A number of entries in the lexicon are currently disabled
+because they require precisely this kind of module, and as they typically contain a parenthetical
+expression that's indicative of the inner component (e.g., ``(duine, rud)'' indicates NP), it should
+be relatively uncomplicated to generate rules for this new module from them.
+
+The rules in their unconverted form are based on statistical alignment templates; the work on expressing
+the components of an SMT system as a single weighted finite state transducer~\citep{Iglesias:2009:HPT:1620754.1620817}
+could potentially be applied to them, with the result combined with a statistical set of rules, for a new
+kind of hybrid system. 
+
+Duckegg, despite being a proof-of-concept, has potential to be a useful, general purpose tool for cleaning
+parallel corpora. Rather than using hard-coded regular expressions, it would be worth investigating the
+use of a language designed for defining such textual patterns, such as Apache UIMA's Ruta~\citep{kluegl2016ruta} language.
+
+I still feel that there is merit to the idea of checking both sides of the corpus with Named Entity Recognition. Although
+the data used to train the Irish models had its limitations, there is scope for combining those models with a gazetteer, if
+only to expand the amount of annotation in the training data, before retraining.
+
+\citet{SkadinsEA:LREC14} describe using a finite state transducer to remove the extra spacing between words in the EU Bookshop
+corpus. The Kyoto Fst Decoder\footnote{\href{http://www.phontron.com/kyfd/}{http://www.phontron.com/kyfd/}}~\citep{neubig09interspeech} 
+can be used for this; the transducer could also be adapted to take
+into consideration the OCR errors, and words that are missing spaces.
